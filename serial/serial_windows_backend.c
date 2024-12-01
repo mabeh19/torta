@@ -14,7 +14,7 @@ struct settings {
 };
 
 
-int OpenPort(const char *port_name, struct settings config, HANDLE* file) 
+int OpenPort(const char *port_name, struct settings *config, HANDLE* file) 
 {
     HANDLE hSerial;
     DCB dcbSerialParams = {0};
@@ -36,13 +36,13 @@ int OpenPort(const char *port_name, struct settings config, HANDLE* file)
     }
 
     // Configure baud rate
-    dcbSerialParams.BaudRate = config.baudrate;
+    dcbSerialParams.BaudRate = config->baudrate;
 
     // Configure parity
-    switch (config.parity) {
-        case 'N': dcbSerialParams.Parity = NOPARITY; break;
-        case 'E': dcbSerialParams.Parity = EVENPARITY; break;
-        case 'O': dcbSerialParams.Parity = ODDPARITY; break;
+    switch (config->parity) {
+        case 'n': dcbSerialParams.Parity = NOPARITY; break;
+        case 'e': dcbSerialParams.Parity = EVENPARITY; break;
+        case 'o': dcbSerialParams.Parity = ODDPARITY; break;
         default:
             fprintf(stderr, "Invalid parity setting\n");
             CloseHandle(hSerial);
@@ -50,13 +50,13 @@ int OpenPort(const char *port_name, struct settings config, HANDLE* file)
     }
 
     // Configure stop bits
-    dcbSerialParams.StopBits = (config.stopBits == '2') ? TWOSTOPBITS : ONESTOPBIT;
+    dcbSerialParams.StopBits = (config->stopBits == 2) ? TWOSTOPBITS : ONESTOPBIT;
 
     // Configure byte size (assuming 8 bits here, adjust if needed)
     dcbSerialParams.ByteSize = 8;
 
     // Configure control flow
-    if (config.controlflow) {
+    if (config->controlflow) {
         dcbSerialParams.fRtsControl = RTS_CONTROL_HANDSHAKE;
     } else {
         dcbSerialParams.fRtsControl = RTS_CONTROL_DISABLE;
@@ -69,7 +69,7 @@ int OpenPort(const char *port_name, struct settings config, HANDLE* file)
     }
 
     // Set timeouts
-    if (config.blocking) {
+    if (config->blocking) {
         timeouts.ReadIntervalTimeout = 0;
         timeouts.ReadTotalTimeoutConstant = 0;
         timeouts.ReadTotalTimeoutMultiplier = 0;
