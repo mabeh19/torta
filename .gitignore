@@ -1,0 +1,9 @@
+*.o
+*.a
+*.dll
+*.lib
+*.obj
+
+torta
+.vscode
+*.exe

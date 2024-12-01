@@ -1,0 +1,6 @@
+[submodule "event"]
+	path = event
+	url = https://github.com/mabeh19/event
+[submodule "ringbuffer"]
+	path = ringbuffer
+	url = https://www.github.com/mabeh19/ringbuffer
