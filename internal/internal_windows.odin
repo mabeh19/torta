@@ -24,5 +24,5 @@ get_serial_ports :: proc() -> []string
         ports[i] = fmt.aprintf("COM%v", portNums[i])
     }
 
-    return ports[:]
+    return ports[:portsFound]
 }

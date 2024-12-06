@@ -16,7 +16,8 @@ Configuration :: struct {
     pollingPeriod: time.Duration,
     historyLength: int,
     infiniteHistory: bool,
-    defaultPortSettings: serial.PortSettings
+    defaultPortSettings: serial.PortSettings,
+    renderer: cstring,
 }
 
 DEFAULT_CONFIG := Configuration {
@@ -29,6 +30,7 @@ DEFAULT_CONFIG := Configuration {
         stopBits = 1,
         blocking = false,
     },
+    renderer = "opengl",
 }
 
 ENCODING_OPTIONS := json.Marshal_Options {

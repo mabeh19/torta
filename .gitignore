@@ -7,4 +7,5 @@
 torta
 .vscode
 *.exe
+*.pdb
 release

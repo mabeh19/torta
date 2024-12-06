@@ -1,18 +1,26 @@
 package backend
 
 import "core:os"
+import "core:log"
+import "core:time"
 
 import sdl "vendor:sdl2"
 import mu "vendor:microui"
 
 import ev "../../../event"
-
 import ue "../../../user_events"
+import "../../../configuration"
 
 BACKGROUND :: mu.Color{90, 95, 100, 255}
 WIDTH  :: 800
 HEIGHT :: 600
-
+DEFAULT_RENDERER : cstring : "opengl"
+SUPPORTED_RENDERERS :: []cstring{
+    "opengl",
+    "opengl2",
+    "direct3d",
+    "software",
+}
 
 @private
 mu_ctx := mu.Context{}
@@ -114,6 +122,8 @@ draw :: proc (draw_screen: proc(ctx: ^mu.Context))
 
     /* render */
     render()
+
+    time.sleep(10)
 }
 
 close_window :: proc ()
@@ -174,7 +184,7 @@ render :: proc()
 			unreachable()
 		}
 	}
-	
+
 	sdl.RenderPresent(state.renderer)
 }
 
@@ -187,23 +197,48 @@ r_init :: proc(width: int, height: int)
                                 i32(width), i32(height), sdl.WINDOW_OPENGL)
     sdl.GL_CreateContext(state.window)
 
+    configured_renderer := configuration.config.renderer
+    configured_renderer = proc(renderer: cstring) -> cstring {
+        for r in SUPPORTED_RENDERERS {
+            if renderer == r {
+                return r
+            }
+        }
+
+        return DEFAULT_RENDERER
+    }(configured_renderer)
+
+    log.info("Using", configured_renderer, "rendering")
     backend_idx :i32 = -1
+    backend_flags := sdl.RendererFlags{}
     if n := sdl.GetNumRenderDrivers(); n > 0 {
         for i in 0..<n {
             info: sdl.RendererInfo
             if sdl.GetRenderDriverInfo(i, &info) == 0 {
-                if info.name == "opengl" {
+                log.debugf("Render driver found: %v", info)
+                if info.name == configured_renderer {
                     backend_idx = i
+                    backend_flags = info.flags
                 }
             }
         }
     }
+    else {
+        log.error("No render driver found")
+        return
+    }
 
-    state.renderer = sdl.CreateRenderer(state.window, backend_idx, {.ACCELERATED, .PRESENTVSYNC})
+
+    state.renderer = sdl.CreateRenderer(state.window, backend_idx, backend_flags)
+    if state.renderer == nil {
+        log.error("Unable to create SDL renderer: ", sdl.GetError())
+        return
+    }
 
     state.atlas_texture = sdl.CreateTexture(state.renderer, sdl.PixelFormatEnum.RGBA32, .TARGET, mu.DEFAULT_ATLAS_WIDTH, mu.DEFAULT_ATLAS_HEIGHT)
 	assert(state.atlas_texture != nil)
 	if err := sdl.SetTextureBlendMode(state.atlas_texture, .BLEND); err != 0 {
+        log.error("Unable to set texture blend mode: ", sdl.GetError())
 		return
 	}
 
@@ -212,8 +247,9 @@ r_init :: proc(width: int, height: int)
 		pixels[i].rgb = 0xff
 		pixels[i].a   = alpha
 	}
-	
+
 	if err := sdl.UpdateTexture(state.atlas_texture, nil, raw_data(pixels), 4*mu.DEFAULT_ATLAS_WIDTH); err != 0 {
+        log.error("Unable to update texture: ", sdl.GetError())
 		return
 	}
 }

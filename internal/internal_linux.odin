@@ -6,18 +6,21 @@ import "core:strings"
 
 get_serial_ports :: proc() -> []string 
 {
-    ports := [dynamic]string{}
+    @static ports := [256]string{}
+
+    portsFound := 0
     if dir, err := os.open("/dev/"); dir > -1 {
         if fi, rd_err := os.read_dir(dir, 1); err == .NONE {
             for f in fi {
                 if  strings.starts_with(f.name, "ttyUSB") ||
                     strings.starts_with(f.name, "ttyACM") {
                     log.debug("Adding ", f.fullpath)
-                    append(&ports, f.fullpath)
+                    ports[portsFound] = f.fullpath
+                    portsFound += 1
                 }
             }
         }
     }
 
-    return ports[:]
+    return ports[:portsFound]
 }
