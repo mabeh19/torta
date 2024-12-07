@@ -12,17 +12,18 @@ foreign sl {
 
 get_serial_ports :: proc() -> []string
 {
-    portNums := [100]u32{}
+    NUM_PORTS_SUPPORTED :: 1024
+    portNums := [NUM_PORTS_SUPPORTED]u32{}
     portsFound : u32 = 0
 
     GetPorts(&portNums[0], 100, &portsFound)
 
-    @static ports := [100]string{}
+    @static ports := [NUM_PORTS_SUPPORTED]string{}
     ports = {}
     for i in 0..<portsFound {
         log.debugf("Adding port: COM%v", portNums[i])
         ports[i] = fmt.aprintf("COM%v", portNums[i])
     }
 
-    return ports[:]
+    return ports[:portsFound]
 }

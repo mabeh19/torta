@@ -19,18 +19,21 @@ int OpenPort(const char *port_name, struct settings *config, HANDLE* file)
     HANDLE hSerial;
     DCB dcbSerialParams = {0};
     COMMTIMEOUTS timeouts = {0};
+    char fullPortName[40] = {};
+
+    snprintf(fullPortName, sizeof fullPortName, "\\\\.\\%s", port_name);
 
     // Open the serial port
-    hSerial = CreateFile(port_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+    hSerial = CreateFile(fullPortName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hSerial == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "Error opening serial port\n");
+        fprintf(stderr, "Error opening serial port: %d\n", GetLastError());
         return 0;
     }
 
     // Set the DCB (Device Control Block) structure
     dcbSerialParams.DCBlength = sizeof(dcbSerialParams);
     if (!GetCommState(hSerial, &dcbSerialParams)) {
-        fprintf(stderr, "Error getting current serial port state\n");
+        fprintf(stderr, "Error getting current serial port state: %d\n", GetLastError());
         CloseHandle(hSerial);
         return 0;
     }
@@ -63,7 +66,7 @@ int OpenPort(const char *port_name, struct settings *config, HANDLE* file)
     }
 
     if (!SetCommState(hSerial, &dcbSerialParams)) {
-        fprintf(stderr, "Error setting serial port parameters\n");
+        fprintf(stderr, "Error setting serial port parameters: %d\n", GetLastError());
         CloseHandle(hSerial);
         return 0;
     }
@@ -84,7 +87,7 @@ int OpenPort(const char *port_name, struct settings *config, HANDLE* file)
     }
 
     if (!SetCommTimeouts(hSerial, &timeouts)) {
-        fprintf(stderr, "Error setting timeouts\n");
+        fprintf(stderr, "Error setting timeouts: %d\n", GetLastError());
         CloseHandle(hSerial);
         return 0;
     }

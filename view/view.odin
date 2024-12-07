@@ -14,6 +14,7 @@ import ue "../user_events"
 import pe "../process_events"
 import s "../state"
 import conf "../configuration"
+import "bml_widget"
 
 import rb "../ringbuffer"
 import ev "../event"
@@ -267,4 +268,8 @@ register_event_handlers :: proc()
 }
 
 
-
+//draw_bml :: proc(ctx: ^mu.Context)
+//{
+//    state := s.get_state()
+//    bml_widget.drawCreator(ctx, state.bml_protocol, &state.bml_packet)
+//}
