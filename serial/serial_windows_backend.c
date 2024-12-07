@@ -19,14 +19,14 @@ int OpenPort(const char *port_name, struct settings *config, HANDLE* file)
     HANDLE hSerial;
     DCB dcbSerialParams = {0};
     COMMTIMEOUTS timeouts = {0};
-    char fullPortName[40] = {};
+    char full_port_name[40] = {0};
 
-    snprintf(fullPortName, sizeof fullPortName, "\\\\.\\%s", port_name);
+    snprintf(full_port_name, sizeof full_port_name, "\\\\.\\%s", port_name);
 
     // Open the serial port
-    hSerial = CreateFile(fullPortName, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
+    hSerial = CreateFile(full_port_name, GENERIC_READ | GENERIC_WRITE, 0, NULL, OPEN_EXISTING, 0, NULL);
     if (hSerial == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "Error opening serial port: %d\n", GetLastError());
+        fprintf(stderr, "Error opening serial port %s: %ld\n", full_port_name, GetLastError());
         return 0;
     }
 

@@ -11,6 +11,7 @@ get_serial_ports :: proc() -> []string
     NUM_PORTS_SUPPORTED :: 1024
     @static ports := [NUM_PORTS_SUPPORTED]string{}
     numPorts := 0
+
     if dir, err := os.open("/dev/"); dir > -1 {
         if fi, rd_err := os.read_dir(dir, 1); err == .NONE {
             for f in fi {

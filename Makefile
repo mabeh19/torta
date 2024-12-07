@@ -1,9 +1,10 @@
 LINUX_C_SOURCES=serial/serial_linux_backend.c
-WINDOWS_C_SOURCES=serial/serial_windows_backend.c
+WINDOWS_C_SOURCES=serial\\serial_windows_backend.c
 C_SOURCES=
 ODIN_FLAGS=-debug
 CC=gcc
 COMPILER_FLAGS=-c
+COMPILER_OUTPUT_SPECIFIER=-o 
 MAKE_LIB=ar 
 MAKE_LIB_FLAGS=-rc 
 RM=rm
@@ -15,8 +16,10 @@ LIB_EXT=a
 ifeq ($(OS),Windows_NT)
 	C_SOURCES += $(WINDOWS_C_SOURCES)
 	CC=cl
+	COMPILER_FLAGS=-TC -c
+	COMPILER_OUTPUT_SPECIFIER=/Fo:
 	MAKE_LIB=lib
-	MAKE_LIB_FLAGS=/out:
+	MAKE_LIB_FLAGS=-nologo -out:
 	RM=del
 	OBJECT_EXT=obj
 	LIB_EXT=lib
@@ -27,13 +30,13 @@ endif
 
 
 C_OBJECTS=$(C_SOURCES:%.c=%.$(OBJECT_EXT))
-C_LIBS=$(C_OBJECTS:%.o=%.$(LIB_EXT))
+C_LIBS=$(C_SOURCES:%.c=%.$(LIB_EXT))
 
 %.$(OBJECT_EXT): %.c
-	$(CC) $(COMPILER_FLAGS) $< -o $@
+	$(CC) $(COMPILER_FLAGS) $< $(COMPILER_OUTPUT_SPECIFIER)$@
 
 %.$(LIB_EXT): %.$(OBJECT_EXT)
-	$(MAKE_LIB) $(MAKE_LIB_FLAGS)$@ $<
+	$(MAKE_LIB) $< $(MAKE_LIB_FLAGS)$@
 	$(RM) $<
 
 all: $(C_LIBS)
