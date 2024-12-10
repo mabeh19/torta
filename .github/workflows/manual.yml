@@ -33,6 +33,9 @@ jobs:
     steps:
     - uses: actions/checkout@v4       # checkout source code
     - uses: ilammy/msvc-dev-cmd@v1    # setup developer command prompt
+    - uses: laytan/setup-odin@v2.7.0
+      with:
+        build-type: release
     
     # Runs a single command using the runners shell
     - name: download GNU make
@@ -52,6 +55,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+    - uses: laytan/setup-odin@v2.7.0
+      with:
+        build-type: release
 
     - name: build app
       run: make release
