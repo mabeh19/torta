@@ -48,11 +48,17 @@ jobs:
     - name: build app
       run: make release
 
+    - name: setup release folder
+      run: |
+        mkdir wind64-release
+        cp C:\Users\runneradmin\odin\vendor\sdl2\SDL2.dll win64-release
+        cp torta.exe win64-release
+
     - name: publish binary for release
       uses: actions/upload-artifact@v4
       with:
-        name: torta.exe
-        path: torta.exe
+        name: win64-release
+        path: win64-release
 
   build-linux:
     runs-on: ubuntu-latest
@@ -67,13 +73,18 @@ jobs:
         branch: master
         release: dev-2024-12
 
+    - name: Install SDL2
+      run: |
+        sudo apt-get update
+        sudo apt-get install libsdl2-dev libfreetype6-dev libsdl2-ttf-dev libsdl2-ttf-2.0-0
+
     - name: build app
       run: make release
 
     - name: publish binary for release
       uses: actions/upload-artifact@v4
       with:
-        name: torta
+        name: torta-linux64
         path: torta
 
   create-release:
@@ -89,6 +100,6 @@ jobs:
       with:
         tag_name: ${{ inputs.tag }}
         files: |
-          torta.exe
-          torta
+          win64-release
+          torta-linux64
   
