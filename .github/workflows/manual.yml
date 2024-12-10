@@ -53,12 +53,13 @@ jobs:
         mkdir win64-release
         cp C:\Users\runneradmin\odin\vendor\sdl2\SDL2.dll win64-release
         cp torta.exe win64-release
+        powershell Compress-Archive win64-release win64-release.zip
 
     - name: publish binary for release
       uses: actions/upload-artifact@v4
       with:
-        name: win64-release
-        path: win64-release
+        name: win64-release.zip
+        path: win64-release.zip
 
   build-linux:
     runs-on: ubuntu-latest
@@ -80,7 +81,7 @@ jobs:
 
     - name: build app
       run: make release
-
+      
     - name: publish binary for release
       uses: actions/upload-artifact@v4
       with:
@@ -123,5 +124,5 @@ jobs:
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
         asset_path: /home/runner/work/torta/torta/torta-linux64
-        asset_name: torta-linux64.zip
+        asset_name: torta-linux64
         asset_content_type: application/zip
