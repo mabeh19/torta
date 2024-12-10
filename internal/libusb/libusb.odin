@@ -4,6 +4,11 @@ import "core:c"
 
 foreign import lib "libusb"
 
+USE_LIBUSB :: false
+
+when USE_LIBUSB
+{
+
 Device :: distinct rawptr
 Device_Handle :: distinct rawptr
 Context :: distinct rawptr
@@ -49,4 +54,4 @@ foreign lib {
     strerror            :: proc "c" (errcode: Error) -> cstring ---
     init_context        :: proc "c" (ctx: ^Context, options: [^]Options, num_options: c.int) -> c.int ---
 }
-
+}

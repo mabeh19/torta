@@ -3,7 +3,7 @@ WINDOWS_C_SOURCES=serial\\serial_windows_backend.c
 C_SOURCES=
 ODIN_FLAGS=-debug
 CC=gcc
-COMPILER_FLAGS=-c
+COMPILER_FLAGS=-c -O3
 COMPILER_OUTPUT_SPECIFIER=-o 
 MAKE_LIB=ar 
 MAKE_LIB_FLAGS=-rc 
@@ -44,6 +44,9 @@ all: $(C_LIBS)
 
 run: $(C_LIBS)
 	odin run . $(ODIN_FLAGS)
+
+release: $(C_LIBS)
+	odin build . -o:speed
 
 debug: all
 	gdb torta
