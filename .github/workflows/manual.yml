@@ -50,7 +50,7 @@ jobs:
 
     - name: setup release folder
       run: |
-        mkdir wind64-release
+        mkdir win64-release
         cp C:\Users\runneradmin\odin\vendor\sdl2\SDL2.dll win64-release
         cp torta.exe win64-release
 
@@ -95,11 +95,33 @@ jobs:
     - name: Download release binaries
       uses: actions/download-artifact@v4
 
-    - name: release
-      uses: softprops/action-gh-release@v2
+    - name: Create Release
+      id: create_release
+      uses: actions/create-release@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ inputs.tag }}
-        files: |
-          win64-release
-          torta-linux64
-  
+        release_name: Release ${{ inputs.tag }}
+        draft: false
+        prerelease: false
+    - name: Upload Windows Release
+      id: upload-windows-release-asset 
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: torta-win64
+        asset_name: torta-win64.zip
+        asset_content_type: application/zip
+    - name: Upload Linux Release
+      id: upload-linux-release-asset
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: torta-linux64
+        asset_name: torta-linux64.zip
+        asset_content_type: application/zip
