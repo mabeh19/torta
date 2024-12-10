@@ -14,7 +14,6 @@ import ue "../user_events"
 import pe "../process_events"
 import s "../state"
 import conf "../configuration"
-import "bml_widget"
 
 import rb "../ringbuffer"
 import ev "../event"
