@@ -31,7 +31,7 @@ jobs:
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
-    - uses: actions/checkout@v        # checkout source code
+    - uses: actions/checkout@v4       # checkout source code
     - uses: ilammy/msvc-dev-cmd@v1    # setup developer command prompt
     
     # Runs a single command using the runners shell
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v
+    - uses: actions/checkout@v4
 
     - name: build app
       run: make release
