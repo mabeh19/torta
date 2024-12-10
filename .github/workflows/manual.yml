@@ -36,6 +36,7 @@ jobs:
     - uses: laytan/setup-odin@v2.7.0
       with:
         build-type: release
+        branch: master
     
     # Runs a single command using the runners shell
     - name: download GNU make
@@ -58,6 +59,7 @@ jobs:
     - uses: laytan/setup-odin@v2.7.0
       with:
         build-type: release
+        branch: master
 
     - name: build app
       run: make release
