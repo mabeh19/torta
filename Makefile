@@ -37,7 +37,6 @@ C_LIBS=$(C_SOURCES:%.c=%.$(LIB_EXT))
 
 %.$(LIB_EXT): %.$(OBJECT_EXT)
 	$(MAKE_LIB) $(MAKE_LIB_FLAGS)$@ $< 
-	$(RM) $<
 
 all: $(C_LIBS)
 	odin build . $(ODIN_FLAGS)
