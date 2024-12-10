@@ -37,6 +37,7 @@ jobs:
       with:
         build-type: release
         branch: master
+        release: dev-2024-12
     
     # Runs a single command using the runners shell
     - name: download GNU make
@@ -60,6 +61,7 @@ jobs:
       with:
         build-type: release
         branch: master
+        release: dev-2024-12
 
     - name: build app
       run: make release
