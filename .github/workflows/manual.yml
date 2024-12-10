@@ -32,7 +32,14 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     - uses: actions/checkout@v4       # checkout source code
+      with:
+        submodules: true
     - uses: ilammy/msvc-dev-cmd@v1    # setup developer command prompt
+    - uses: laytan/setup-odin@v2.7.0
+      with:
+        build-type: release
+        branch: master
+        release: dev-2024-12
     
     # Runs a single command using the runners shell
     - name: download GNU make
@@ -52,6 +59,13 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        submodules: true
+    - uses: laytan/setup-odin@v2.7.0
+      with:
+        build-type: release
+        branch: master
+        release: dev-2024-12
 
     - name: build app
       run: make release
