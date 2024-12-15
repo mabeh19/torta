@@ -66,6 +66,7 @@ draw_settings :: proc(ctx: ^mu.Context)
         mu.label(ctx, "Selected port: ")
         mu.label(ctx, tmp_settings_.selectedPort)
         
+        mu.begin_panel(ctx, "Port list")
         for port in state.ports {
             if .ACTIVE in mu.treenode(ctx, port) {
                 // TODO: add info about port here
@@ -74,6 +75,7 @@ draw_settings :: proc(ctx: ^mu.Context)
                 }
             }
         }
+        mu.end_panel(ctx)
     }
 
     mu.layout_row(ctx, {80, -1}, 24)

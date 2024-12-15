@@ -159,20 +159,22 @@ to_cstring :: proc(buf: []u8) -> cstring
 draw_data_view :: proc(ctx: ^mu.Context)
 {
     @static displayBuffer : [dynamic]u8
+    @static prevRead := 0
 
     state := s.get_state()
 
-    if len(displayBuffer) < s.data_buffer_size() {
+    if prevRead != state.bytesRead {
         resize(&displayBuffer, s.data_buffer_size())
-    }
-    
-    first, second := rb.parts(state.dataBuffer)
 
-    copy(displayBuffer[:len(first)], first[:])
+        first, second := rb.parts(state.dataBuffer)
 
-    if len(second) > 0 {
-        copy(displayBuffer[len(first):], second[:])
+        copy(displayBuffer[:len(first)], first[:])
+
+        if len(second) > 0 {
+            copy(displayBuffer[len(first):], second[:])
+        }
     }
+
 
     mu.layout_row(ctx, {-1}, -40)
     mu.begin_panel(ctx, "Data window")

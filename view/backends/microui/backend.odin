@@ -192,9 +192,9 @@ render :: proc()
 r_init :: proc(width: int, height: int) 
 {
     /* init SDL window */
-    state.window = sdl.CreateWindow(  "STERM", 
-                                sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 
-                                i32(width), i32(height), sdl.WINDOW_OPENGL)
+    state.window = sdl.CreateWindow("torta", 
+                                    sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 
+                                    i32(width), i32(height), sdl.WINDOW_OPENGL)
     sdl.GL_CreateContext(state.window)
 
     configured_renderer := configuration.config.renderer

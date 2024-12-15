@@ -54,7 +54,7 @@ port_is_open :: proc() -> bool {
 }
 
 data_buffer_size :: proc() -> int {
-    return len(state.dataBuffer.data)
+    return rb.length(state.dataBuffer)
 }
 
 init :: proc()
@@ -64,6 +64,7 @@ init :: proc()
 
     ev.listen(&ue.clearEvent, proc() {
         rb.clear(&state.dataBuffer)
+        state.bytesRead = 0
     })
 
     ev.listen(&pe.dataReceivedEvent, proc(data: []u8) {
