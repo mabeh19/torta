@@ -175,7 +175,6 @@ draw_data_view :: proc(ctx: ^mu.Context)
         }
     }
 
-
     mu.layout_row(ctx, {-1}, -40)
     mu.begin_panel(ctx, "Data window")
     panel := mu.get_current_container(ctx)

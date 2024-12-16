@@ -8,6 +8,8 @@ import "core:log"
 import "core:time"
 import "../serial"
 
+LOCAL_TEST :: #config(LOCAL_TEST, false)
+
 DATA_DIR :: "torta"
 ROOT_DIR : string
 FILE_NAME :: "config.json"

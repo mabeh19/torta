@@ -22,6 +22,7 @@ main :: proc()
     state.init()
     view.init()
 
+when configuration.LOCAL_TEST {
     thread.create_and_start(proc() {
         iter := 0
         for {
@@ -34,6 +35,7 @@ main :: proc()
             time.sleep(20 * time.Millisecond)
         }
     })
+}
 
     for !view.should_close() {
         backend.draw(view.draw)

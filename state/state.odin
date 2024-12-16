@@ -59,6 +59,22 @@ data_buffer_size :: proc() -> int {
 
 init :: proc()
 {
+when configuration.LOCAL_TEST {
+    @static test_data := []string {
+        "port1",
+        "port2",
+        "port3",
+        "port4",
+        "port5",
+        "port6",
+        "port7",
+        "port8",
+        "port9",
+        "port10",
+        "port11",
+    }
+    state.ports = test_data[:]
+}
     config := &configuration.config
     state.dataBuffer = rb.new(config.historyLength, u8, config.infiniteHistory)
 
