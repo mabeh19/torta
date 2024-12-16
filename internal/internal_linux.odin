@@ -6,10 +6,8 @@ import "core:strings"
 
 import "libusb"
 
-get_serial_ports :: proc() -> []string 
+get_serial_ports_internal :: proc(ports: []SerialPort) -> int
 {
-    NUM_PORTS_SUPPORTED :: 1024
-    @static ports := [NUM_PORTS_SUPPORTED]string{}
     numPorts := 0
 
     if dir, err := os.open("/dev/"); dir > -1 {
@@ -19,10 +17,13 @@ get_serial_ports :: proc() -> []string
                     strings.starts_with(f.name, "ttyACM") {
 
                     log.debug("Adding ", f.fullpath)
-                    ports[numPorts] = f.fullpath
+                    ports[numPorts] = SerialPort {
+                        port_name = f.fullpath,
+                        info = get_device_info(f.fullpath),
+                    }
                     numPorts += 1
 
-                    if numPorts == NUM_PORTS_SUPPORTED {
+                    if numPorts == len(ports) {
                         break
                     }
                 }
@@ -30,5 +31,5 @@ get_serial_ports :: proc() -> []string
         }
     }
 
-    return ports[:numPorts]
+    return numPorts
 }

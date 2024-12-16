@@ -14,13 +14,11 @@ import "core:log"
 import "core:thread"
 import "core:os"
 import "core:io"
-
-KB :: 1024
-DATA_BUFFER_SIZE :: 1 * KB
-
+import "core:sync"
 
 State :: struct {
     // Data
+    dataBufferLock: sync.Mutex,
     dataBuffer: rb.RingBuffer(u8),
     bytesRead: int,
 
@@ -39,7 +37,7 @@ State :: struct {
     selectedPort: string,
     port: serial.Port,
     portSettings: serial.PortSettings,
-    ports: []string,
+    ports: []internal.SerialPort,
     reader: ^thread.Thread,
 }
 
@@ -85,7 +83,12 @@ when configuration.LOCAL_TEST {
 
     ev.listen(&pe.dataReceivedEvent, proc(data: []u8) {
         log.debug("Data received: ", data)
-        rb.push(&state.dataBuffer, data)
+
+        {
+            sync.lock(&state.dataBufferLock)
+            defer sync.unlock(&state.dataBufferLock)
+            rb.push(&state.dataBuffer, data)
+        }
         state.bytesRead += len(data)
     })
 

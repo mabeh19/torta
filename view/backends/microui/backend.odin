@@ -31,6 +31,7 @@ state := struct {
     renderer: ^sdl.Renderer,
     atlas_texture: ^sdl.Texture,
     should_close: bool,
+    forward_input: bool,
 }{}
 
 
@@ -81,7 +82,11 @@ draw :: proc (draw_screen: proc(ctx: ^mu.Context))
             mu.input_mouse_move(ctx, e.motion.x, e.motion.y)
         case .MOUSEWHEEL: 
             mu.input_scroll(ctx, 0, e.wheel.y * -30)
-        case .TEXTINPUT: 
+        case .TEXTINPUT:
+            if state.forward_input {
+                ev.signal(&ue.sendEvent, e.text.text[:])
+                continue
+            }
             mu.input_text(ctx, string(cstring(&e.text.text[0])))
 
         case .MOUSEBUTTONDOWN, .MOUSEBUTTONUP:
@@ -96,7 +101,12 @@ draw :: proc (draw_screen: proc(ctx: ^mu.Context))
             if e.type == .KEYUP && e.key.keysym.sym == .ESCAPE {
                 sdl.PushEvent(&sdl.Event{type = .QUIT})
             }
-            
+
+            if state.forward_input {
+                ev.signal(&ue.rawKeypressEvent, e)
+                continue
+            }
+
             fn := mu.input_key_down if e.type == .KEYDOWN else mu.input_key_up
             
             #partial switch e.key.keysym.sym {
@@ -194,7 +204,7 @@ r_init :: proc(width: int, height: int)
     /* init SDL window */
     state.window = sdl.CreateWindow("torta", 
                                     sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 
-                                    i32(width), i32(height), sdl.WINDOW_OPENGL)
+                                    i32(width), i32(height), sdl.WINDOW_OPENGL | sdl.WINDOW_RESIZABLE)
     sdl.GL_CreateContext(state.window)
 
     configured_renderer := configuration.config.renderer

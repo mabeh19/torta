@@ -1,5 +1,7 @@
 package user_events
 
+import sdl "vendor:sdl2"
+
 import "../serial"
 import ev "../event"
 
@@ -12,3 +14,4 @@ startTrace := ev.new(string, "Start Trace")
 stopTrace := ev.new("Stop Trace")
 quitEvent := ev.new("Quit Application")
 sendFile := ev.new(string, "Send File")
+rawKeypressEvent := ev.new(sdl.Event, "Raw SDL Input")

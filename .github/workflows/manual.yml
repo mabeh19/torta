@@ -21,6 +21,11 @@ on:
         description: 'Changes in version'
         required: true
         type: string
+      isPrerelease:
+        description: 'Is prerelease'
+        required: true
+        default: true
+        type: bool
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -53,13 +58,12 @@ jobs:
         mkdir win64-release
         cp C:\Users\runneradmin\odin\vendor\sdl2\SDL2.dll win64-release
         cp torta.exe win64-release
-        powershell Compress-Archive win64-release win64-release.zip
 
     - name: publish binary for release
       uses: actions/upload-artifact@v4
       with:
-        name: win64-release.zip
-        path: win64-release.zip
+        name: win64-release
+        path: win64-release
 
   build-linux:
     runs-on: ubuntu-latest
@@ -105,7 +109,7 @@ jobs:
         tag_name: ${{ inputs.tag }}
         release_name: Release ${{ inputs.tag }}
         draft: false
-        prerelease: false
+        prerelease: ${{ inputs.isPrerelease }}
     - name: Upload Windows Release
       id: upload-windows-release-asset 
       uses: actions/upload-release-asset@v1

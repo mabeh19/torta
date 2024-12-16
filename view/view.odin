@@ -9,6 +9,7 @@ import "core:c"
 import "core:strconv"
 import "core:log"
 import "core:bytes"
+import "core:sync"
 
 import ue "../user_events"
 import pe "../process_events"
@@ -75,6 +76,7 @@ draw :: proc (ctx: ^mu.Context)
     if mu.begin_window(ctx, "MUTERM", {0, 0, width, height}, opts) {
         defer mu.end_window(ctx)
         win := mu.get_current_container(ctx)
+        win.rect = {0, 0, width, height}
 
         if view_state_.in_settings {
             draw_settings(ctx)
@@ -86,7 +88,10 @@ draw :: proc (ctx: ^mu.Context)
                 mu.layout_begin_column(ctx)
                 defer mu.layout_end_column(ctx)
                 draw_data_view(ctx)
-                draw_input_field(ctx)
+
+                if state.bufferedMode {
+                    draw_input_field(ctx)
+                }
             }
 
             // Column 2
@@ -99,7 +104,7 @@ draw :: proc (ctx: ^mu.Context)
                     tmp_settings_ = settings_
                 }
                 draw_port_toggle(ctx)
-                
+
                 // Clear
                 if mu.button(ctx, "Clear") == {.SUBMIT} {
                     ev.signal(&ue.clearEvent)
@@ -164,6 +169,9 @@ draw_data_view :: proc(ctx: ^mu.Context)
     state := s.get_state()
 
     if prevRead != state.bytesRead {
+        sync.lock(&state.dataBufferLock)
+        defer sync.unlock(&state.dataBufferLock)
+
         resize(&displayBuffer, s.data_buffer_size())
 
         first, second := rb.parts(state.dataBuffer)
