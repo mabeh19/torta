@@ -48,6 +48,7 @@ init_settings :: proc()
     config := &configuration.config
     settings_ = convert_settings(config.defaultPortSettings)
     tmp_settings_ = settings_
+    ev.signal(&ue.settingsChanged, config.defaultPortSettings)
 }
 
 draw_settings :: proc(ctx: ^mu.Context)
