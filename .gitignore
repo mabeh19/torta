@@ -9,3 +9,4 @@ torta
 *.exe
 *.pdb
 release
+.log

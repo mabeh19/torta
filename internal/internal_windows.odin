@@ -16,12 +16,16 @@ get_serial_ports_internal :: proc(ports: []SerialPort) -> int
     defer delete(portNums)
     portsFound : u32 = 0
 
-    GetPorts(&portNums[0], len(ports), &portsFound)
+    GetPorts(&portNums[0], u32(len(ports)), &portsFound)
 
     for i in 0..<portsFound {
+        fullPath := fmt.aprintf("COM%v", portNums[i])
         log.debugf("Adding port: COM%v", portNums[i])
-        ports[i] = fmt.aprintf("COM%v", portNums[i])
+        ports[i] = SerialPort {
+            port_name = fullPath,
+            info = get_device_info(fullPath),
+        }
     }
 
-    return portsFound
+    return int(portsFound)
 }
