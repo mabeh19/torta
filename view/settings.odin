@@ -32,6 +32,7 @@ Settings :: struct {
     baudrateIsValid: bool,
     stopBits: f32,
     parity: Parity,
+    flowControl: bool,
 }
 
 
@@ -80,6 +81,7 @@ draw_settings :: proc(ctx: ^mu.Context)
         mu.end_panel(ctx)
     }
 
+
     mu.layout_row(ctx, {80, -1}, 24)
     mu.label(ctx, "Baudrate")
     if .CHANGE in mu.textbox(ctx, tmp_settings_.baudrate[:], &tmp_settings_.baudrateLen) {
@@ -95,6 +97,8 @@ draw_settings :: proc(ctx: ^mu.Context)
     mu.label(ctx, "Parity")
     parity(ctx, &tmp_settings_.parity)
 
+    mu.layout_row(ctx, {80, -1}, 24)
+    mu.checkbox(ctx, "Flow Control", &tmp_settings_.flowControl)
 
     mu.layout_row(ctx, {-1}, -50)
     mu.label(ctx, "")
@@ -162,7 +166,7 @@ convert_settings_view2serial :: proc(settings: Settings) -> serial.PortSettings
         .Odd = 'o', 
         .Even = 'e',
     }
-    return serial.PortSettings {settings.selectedPort, settings.baudrateParsed, parityAsChar[settings.parity], u8(settings.stopBits), false}
+    return serial.PortSettings {settings.selectedPort, settings.baudrateParsed, parityAsChar[settings.parity], u8(settings.stopBits), true, settings.flowControl}
 }
 
 convert_settings_serial2view :: proc(portSettings: serial.PortSettings) -> Settings
@@ -180,7 +184,7 @@ convert_settings_serial2view :: proc(portSettings: serial.PortSettings) -> Setti
             return .None
         }
     }
-    settings := Settings {portSettings.port, {}, {}, 0, portSettings.baudrate, true, f32(portSettings.stopBits), charAsParity(portSettings.parity)}
+    settings := Settings {portSettings.port, {}, {}, 0, portSettings.baudrate, true, f32(portSettings.stopBits), charAsParity(portSettings.parity), portSettings.flowControl}
 
     bs := fmt.bprint(settings.baudrate[:], settings.baudrateParsed)
     settings.baudrateLen = len(bs)

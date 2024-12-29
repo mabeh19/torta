@@ -155,9 +155,6 @@ when configuration.LOCAL_TEST {
 
     ev.listen(&ue.refreshPortsEvent, proc() {
         ports := internal.get_serial_ports()
-        if state.ports != nil {
-            delete(state.ports)
-        }
 
         state.ports = ports
     })
@@ -197,7 +194,7 @@ when configuration.LOCAL_TEST {
             }
         })
 
-        ev.listen(&ue.stopTrace, proc(){
+        ev.listen(&ue.stopTrace, proc() {
             state.tracing = false
             io.close(state.traceWriter)
             if sub, allocced := ev.unlisten(&pe.dataReceivedEvent, trace_data); allocced {

@@ -40,6 +40,7 @@ PortSettings :: struct {
     parity: u8,
     stopBits: u8,
     blocking: bool,
+    flowControl: bool,
 };
 
 

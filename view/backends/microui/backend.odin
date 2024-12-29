@@ -84,7 +84,7 @@ draw :: proc (draw_screen: proc(ctx: ^mu.Context))
             mu.input_scroll(ctx, 0, e.wheel.y * -30)
         case .TEXTINPUT:
             if state.forward_input {
-                ev.signal(&ue.sendEvent, e.text.text[:])
+                ev.signal(&ue.sendEvent, transmute([]u8)string(cstring(&e.text.text[0])))
                 continue
             }
             mu.input_text(ctx, string(cstring(&e.text.text[0])))
@@ -102,8 +102,8 @@ draw :: proc (draw_screen: proc(ctx: ^mu.Context))
                 sdl.PushEvent(&sdl.Event{type = .QUIT})
             }
 
-            if state.forward_input {
-                ev.signal(&ue.rawKeypressEvent, e)
+            if state.forward_input && e.type == .KEYUP {
+                ev.signal(&ue.rawKeypressEvent, e.key)
                 continue
             }
 
@@ -130,10 +130,16 @@ draw :: proc (draw_screen: proc(ctx: ^mu.Context))
     }
     mu.end(ctx)
 
-    /* render */
+    // render
     render()
 
     time.sleep(10)
+}
+
+forward_input :: proc(forward: bool)
+{
+    log.debug("Forward input:", forward)
+    state.forward_input = forward
 }
 
 close_window :: proc ()

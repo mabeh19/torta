@@ -50,6 +50,7 @@ init :: proc ()
 {
     backend.init(SCREEN_WIDTH, SCREEN_HEIGHT)
     init_settings()
+    register_event_handlers()
 }
 
 labelf :: proc(ctx: ^mu.Context, f: string, args: ..any)
@@ -87,9 +88,13 @@ draw :: proc (ctx: ^mu.Context)
             {
                 mu.layout_begin_column(ctx)
                 defer mu.layout_end_column(ctx)
+
+                height : i32 = state.bufferedMode ? -40 : -1
+                mu.layout_row(ctx, {-1}, height)
                 draw_data_view(ctx)
 
                 if state.bufferedMode {
+                    mu.layout_row(ctx, {-60, -1}, 40)
                     draw_input_field(ctx)
                 }
             }
@@ -115,10 +120,14 @@ draw :: proc (ctx: ^mu.Context)
                 mu.checkbox(ctx, "Autoscroll", &view_state_.auto_scroll)
 
                 // Text settings
+                mu.checkbox(ctx, "Echo", &state.echo)
                 mu.checkbox(ctx, "Append nl", &state.appendNewLine)
                 mu.checkbox(ctx, "Append cr", &state.appendCarriageReturn)
                 mu.checkbox(ctx, "Append 0", &state.appendNullByte)
-                mu.checkbox(ctx, "Buffered", &state.bufferedMode)
+
+                if .CHANGE in mu.checkbox(ctx, "Buffered", &state.bufferedMode) {
+                    backend.forward_input(!state.bufferedMode)
+                }
 
                 // File I/O
                 draw_file_io(ctx)
@@ -181,9 +190,15 @@ draw_data_view :: proc(ctx: ^mu.Context)
         if len(second) > 0 {
             copy(displayBuffer[len(first):], second[:])
         }
+
+        //if state.bytesRead == 0 {
+        //    displayBuffer[0] = 0
+        //    //displayBuffer[1] = 0
+        //}
+
+        prevRead = state.bytesRead
     }
 
-    mu.layout_row(ctx, {-1}, -40)
     mu.begin_panel(ctx, "Data window")
     panel := mu.get_current_container(ctx)
     mu.layout_row(ctx, {-1}, -1)
@@ -203,7 +218,6 @@ draw_input_field :: proc(ctx: ^mu.Context)
     @static strlen := 0
 
     submit := false
-    mu.layout_row(ctx, {-60, -1}, -1)
     for e in mu.textbox(ctx, input[:], &strlen) {
         if e == .SUBMIT {
             mu.set_focus(ctx, ctx.last_id)
@@ -268,11 +282,23 @@ draw_file_io :: proc(ctx: ^mu.Context)
         }
     }
 }
+    
+
+import sdl "vendor:sdl2"
+import "../keycode_translator"
 
 @(private)
 register_event_handlers :: proc()
 {
-    // empty
+    ev.listen(&ue.rawKeypressEvent, proc (kev: sdl.KeyboardEvent) {
+        encoded_sym, ok := keycode_translator.translate_symbol(kev.keysym)
+        if !ok { 
+            log.warnf("Input not forwarded: %v", kev.keysym)
+            return 
+        }
+
+        ev.signal(&ue.sendEvent, transmute([]u8)encoded_sym)
+    })
 }
 
 
