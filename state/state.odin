@@ -208,6 +208,10 @@ when configuration.LOCAL_TEST {
             io.close(state.traceWriter)
         }
     })
+
+
+    // Load ports at startup
+    ev.signal(&ue.refreshPortsEvent)
 }
 
 get_state :: proc() -> ^State 

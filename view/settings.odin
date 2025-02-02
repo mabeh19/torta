@@ -70,11 +70,24 @@ draw_settings :: proc(ctx: ^mu.Context)
 
         mu.layout_row(ctx, {-1}, 200)
         mu.begin_panel(ctx, "Port list")
-        for port in state.ports {
-            if .ACTIVE in mu.treenode(ctx, port.port_name) {
-                // TODO: add info about port here
+        for &port in state.ports {
+            friendly_name := [1024]byte{}
+            fmt.bprintf(friendly_name[:], "%s (%s)", port.port_name, port.info.product[:])
+            if .ACTIVE in mu.treenode(ctx, string(friendly_name[:])) {
                 if .SUBMIT in mu.button(ctx, "Select") {
                     tmp_settings_.selectedPort = port.port_name
+                }
+                infos := [?]struct {title: string, value: string}{
+                    {"Manufacturer: ", cast(string)port.info.manufacturer[:]},
+                    {"Product: ", cast(string)port.info.product[:]},
+                    {"VID/PID: ", cast(string)port.info.id[:]},
+                    {"Driver: ", cast(string)port.info.driver[:]},
+                    {"USB Model: ", cast(string)port.info.usb_model[:]},
+                }
+                for info in infos {
+                    mu.layout_row(ctx, {80, -1})
+                    mu.label(ctx, info.title)
+                    mu.label(ctx, info.value)
                 }
             }
         }
@@ -97,7 +110,7 @@ draw_settings :: proc(ctx: ^mu.Context)
     mu.label(ctx, "Parity")
     parity(ctx, &tmp_settings_.parity)
 
-    mu.layout_row(ctx, {80, -1}, 24)
+    mu.layout_row(ctx, {120, -1}, 24)
     mu.checkbox(ctx, "Flow Control", &tmp_settings_.flowControl)
 
     mu.layout_row(ctx, {-1}, -50)

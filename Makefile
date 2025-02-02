@@ -2,6 +2,7 @@ LINUX_C_SOURCES=serial/serial_linux_backend.c
 WINDOWS_C_SOURCES=serial\\serial_windows_backend.c
 C_SOURCES=
 ODIN_FLAGS=-debug
+ODIN_LIBS=
 CC=gcc
 COMPILER_FLAGS=-O3 -c
 COMPILER_OUTPUT_SPECIFIER=-o 
@@ -10,7 +11,6 @@ MAKE_LIB_FLAGS=rcs
 RM=rm
 OBJECT_EXT=o
 LIB_EXT=a
-
 
 
 ifeq ($(OS),Windows_NT)
@@ -26,6 +26,7 @@ ifeq ($(OS),Windows_NT)
 else
 	UNAME_S=$(shell uname -s)
 	C_SOURCES += $(LINUX_C_SOURCES)
+	ODIN_LIBS += "-ludev"
 endif
 
 
@@ -39,13 +40,13 @@ C_LIBS=$(C_SOURCES:%.c=%.$(LIB_EXT))
 	$(MAKE_LIB) $(MAKE_LIB_FLAGS)$@ $< 
 
 all: $(C_LIBS)
-	odin build . $(ODIN_FLAGS)
+	odin build . $(ODIN_FLAGS) -extra-linker-flags:$(ODIN_LIBS)
 
 run: $(C_LIBS)
-	odin run . $(ODIN_FLAGS)
+	odin run . $(ODIN_FLAGS) -extra-linker-flags:$(ODIN_LIBS)
 
 release: $(C_LIBS)
-	odin build . -o:speed
+	odin build . -extra-linker-flags:$(ODIN_LIBS) -o:speed
 
 debug: all
 	gdb torta

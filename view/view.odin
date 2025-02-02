@@ -202,7 +202,10 @@ draw_data_view :: proc(ctx: ^mu.Context)
     mu.begin_panel(ctx, "Data window")
     panel := mu.get_current_container(ctx)
     mu.layout_row(ctx, {-1}, -1)
-    mu.text(ctx, transmute(string)displayBuffer[:])
+    {
+        
+        mu.text(ctx, transmute(string)displayBuffer[:])
+    }
     mu.end_panel(ctx)
     
     if view_state_.auto_scroll {

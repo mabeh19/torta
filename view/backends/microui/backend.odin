@@ -32,8 +32,13 @@ state := struct {
     atlas_texture: ^sdl.Texture,
     should_close: bool,
     forward_input: bool,
+    fonts: [dynamic]^mu.Font,
 }{}
 
+push_font :: proc(font: ^mu.Font)
+{
+
+}
 
 get_ctx :: proc() -> ^mu.Context 
 {

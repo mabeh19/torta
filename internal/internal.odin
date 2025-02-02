@@ -1,15 +1,19 @@
 package internal
 
+import "core:fmt"
 import "core:log"
+import "core:os"
 
 import usb "libusb"
 
 NUM_PORTS_SUPPORTED :: 1024
 
 DeviceInfo :: struct {
-    manufacturer:       string,
-    product:            string,
-    device_name:        string,
+    manufacturer:       [256]byte,
+    product:            [256]byte,
+    driver:             [256]byte,
+    usb_model:          [256]byte,
+    id:                 [10]byte,
 }
 
 SerialPort :: struct {
@@ -49,9 +53,3 @@ when false {
     return ports[:num_ports]
 }
 
-get_device_info :: proc(port: string) -> (info: DeviceInfo)
-{
-    
-
-    return
-}
