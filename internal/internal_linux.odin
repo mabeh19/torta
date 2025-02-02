@@ -72,16 +72,6 @@ get_device_info :: proc(port: string) -> (info: DeviceInfo)
             log.errorf("Error reading device for %v, err: %v", port, libc.strerror(libc.errno()^))
             return
         }
-        
-        for attr := udev.udev_device_get_sysattr_list_entry(dev); attr != nil; attr = udev.udev_list_entry_get_next(attr) {
-            name := udev.udev_list_entry_get_name(attr)
-            log.debugf("Attribute: %v, Value: %v", name, udev.udev_device_get_sysattr_value(dev, name))
-        }
-
-        for prop := udev.udev_device_get_properties_list_entry(dev); prop != nil; prop = udev.udev_list_entry_get_next(prop) {
-            name := udev.udev_list_entry_get_name(prop)
-            log.debugf("Property: %v, Value: %v", name, udev.udev_device_get_property_value(dev, name))
-        }
 
         manufacturer := udev.udev_device_get_property_value(dev, "ID_VENDOR_FROM_DATABASE")
         product := udev.udev_device_get_property_value(dev, "ID_MODEL_FROM_DATABASE")
