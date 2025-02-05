@@ -8,6 +8,7 @@ foreign import sl "../serial/serial_windows_backend.lib"
 
 foreign sl {
 	GetPorts :: proc(lpPortNumbers: windows.PULONG, uPortNumbersCount: windows.ULONG, puPortNumbersFound: windows.PULONG) -> windows.ULONG ---
+    GetDeviceInfo :: proc(info: ^DeviceInfo) -> windows.LONG ---
 }
 
 get_serial_ports_internal :: proc(ports: []SerialPort) -> int

@@ -19,7 +19,7 @@ ifeq ($(OS),Windows_NT)
 	COMPILER_FLAGS=-TC -c
 	COMPILER_OUTPUT_SPECIFIER=/Fo:
 	MAKE_LIB=lib
-	MAKE_LIB_FLAGS=-nologo -out:
+	MAKE_LIB_FLAGS=-nologo /link setupapi.lib -out:
 	RM=del
 	OBJECT_EXT=obj
 	LIB_EXT=lib
@@ -55,5 +55,7 @@ dll:
 	odin build . -build-mode:dll
 	mv app.so ..
 
+test: all
+	odin test .
 
 phony: all

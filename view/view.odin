@@ -65,7 +65,6 @@ draw :: proc (ctx: ^mu.Context)
 {
     // Drawing logic
     opts := mu.Options {
-        //.NO_FRAME,
         .NO_RESIZE,
         .NO_SCROLL,
         .NO_CLOSE,
@@ -304,9 +303,3 @@ register_event_handlers :: proc()
     })
 }
 
-
-//draw_bml :: proc(ctx: ^mu.Context)
-//{
-//    state := s.get_state()
-//    bml_widget.drawCreator(ctx, state.bml_protocol, &state.bml_packet)
-//}
