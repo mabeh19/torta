@@ -1,35 +1,13 @@
-# This is a basic workflow that is manually triggered
+name: Test PR
 
-name: Create Release
-
-# Controls when the action will run. Workflow runs when manually triggered using the UI
-# or API.
+# Controls when the action will run. Workflow runs when a PR is created for master
 on:
-  workflow_dispatch:
-    # Inputs the workflow accepts.
-    inputs:
-      tag:
-        # Friendly description to be shown in the UI instead of 'name'
-        description: 'Version'
-        # Default value if no value is explicitly provided
-        default: ''
-        # Input has to be provided for the workflow to run
-        required: true
-        # The data type of the input
-        type: string
-      changes:
-        description: 'Changes in version'
-        required: true
-        type: string
-      isPrerelease:
-        description: 'Is prerelease'
-        required: true
-        default: true
-        type: bool
+  pull_request:
+    branches:
+      - master
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "greet"
   build-windows:
     # The type of runner that the job will run on
     runs-on: windows-latest
