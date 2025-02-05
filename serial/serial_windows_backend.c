@@ -160,7 +160,7 @@ LONG ListUSBDevices(struct DeviceInfo* info) {
 
         // Retrieve Device Model
         char model[MAX_PATH] = "Not Available\0";
-        if (SetupDiGetDeviceRegistryPropertyA(hDevInfo, &DeviceInfoData, SPDRP_DEVICEDESC, &DataT,
+        SetupDiGetDeviceRegistryPropertyA(hDevInfo, &DeviceInfoData, SPDRP_DEVICEDESC, &DataT,
                                               (PBYTE)model, sizeof(model), NULL);
         snprintf(info->usb_model, sizeof info->usb_model, "%s", model);
 
