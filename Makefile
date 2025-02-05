@@ -16,17 +16,17 @@ LIB_EXT=a
 ifeq ($(OS),Windows_NT)
 	C_SOURCES += $(WINDOWS_C_SOURCES)
 	CC=cl
-	COMPILER_FLAGS=-TC -c
+	COMPILER_FLAGS=-TC /link setupapi.lib -c
 	COMPILER_OUTPUT_SPECIFIER=/Fo:
 	MAKE_LIB=lib
-	MAKE_LIB_FLAGS=-nologo /link setupapi.lib -out:
+	MAKE_LIB_FLAGS=-nologo -out:
 	RM=del
 	OBJECT_EXT=obj
 	LIB_EXT=lib
 else
 	UNAME_S=$(shell uname -s)
 	C_SOURCES += $(LINUX_C_SOURCES)
-	ODIN_LIBS += "-ludev"
+	ODIN_LIBS += -ludev
 endif
 
 
@@ -40,10 +40,10 @@ C_LIBS=$(C_SOURCES:%.c=%.$(LIB_EXT))
 	$(MAKE_LIB) $(MAKE_LIB_FLAGS)$@ $< 
 
 all: $(C_LIBS)
-	odin build . $(ODIN_FLAGS) -extra-linker-flags:$(ODIN_LIBS)
+	odin build . $(ODIN_FLAGS) -extra-linker-flags:"$(ODIN_LIBS)"
 
 run: $(C_LIBS)
-	odin run . $(ODIN_FLAGS) -extra-linker-flags:$(ODIN_LIBS)
+	odin run . $(ODIN_FLAGS) -extra-linker-flags:"$(ODIN_LIBS)"
 
 release: $(C_LIBS)
 	odin build . -extra-linker-flags:$(ODIN_LIBS) -o:speed
