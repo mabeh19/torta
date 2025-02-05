@@ -30,3 +30,14 @@ get_serial_ports_internal :: proc(ports: []SerialPort) -> int
 
     return int(portsFound)
 }
+
+get_device_info :: proc(path: string) -> DeviceInfo
+{
+    info := DeviceInfo{}
+
+    if GetDeviceInfo(&info) != 0 {
+        log.errorf("Error occurred while retrieving device info for %v", path)
+    }
+
+    return info
+}
