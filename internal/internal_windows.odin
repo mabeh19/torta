@@ -3,12 +3,13 @@ package internal
 import "core:log"
 import "core:sys/windows"
 import "core:fmt"
+import "core:strings"
 
 foreign import sl "../serial/serial_windows_backend.lib"
 
 foreign sl {
 	GetPorts :: proc(lpPortNumbers: windows.PULONG, uPortNumbersCount: windows.ULONG, puPortNumbersFound: windows.PULONG) -> windows.ULONG ---
-    GetDeviceInfo :: proc(info: ^DeviceInfo) -> windows.LONG ---
+    GetDeviceInfo :: proc(info: ^DeviceInfo, path: cstring) -> windows.LONG ---
 }
 
 get_serial_ports_internal :: proc(ports: []SerialPort) -> int
@@ -35,7 +36,8 @@ get_device_info :: proc(path: string) -> DeviceInfo
 {
     info := DeviceInfo{}
 
-    if GetDeviceInfo(&info) != 0 {
+    path := strings.clone_to_cstring(path)
+    if GetDeviceInfo(&info, path) != 0 {
         log.errorf("Error occurred while retrieving device info for %v", path)
     }
 
