@@ -51,7 +51,7 @@ run: $(C_LIBS)
 	odin run . $(ODIN_DEBUG_FLAGS)
 
 release: $(C_LIBS)
-	odin build . $(ODIN_RELEASE_FLAGS) -o:speed
+	odin build . $(ODIN_RELEASE_FLAGS)
 
 debug: all
 	gdb torta
