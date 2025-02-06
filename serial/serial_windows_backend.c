@@ -1,9 +1,13 @@
 #include <windows.h>
+#include <setupapi.h>
+#include <devguid.h>
+#include <regstr.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdbool.h>
 
 #pragma comment(lib, "OneCore.lib")
+#pragma comment(lib, "setupapi.lib")
 
 struct settings {
     uint32_t baudrate;
@@ -13,6 +17,13 @@ struct settings {
     bool controlflow;    // true for RTS/CTS hardware control, false for no control
 };
 
+struct DeviceInfo {
+    char manufacturer[256];
+    char product[256];
+    char driver[266];
+    char usb_model[256];
+    char id[10];
+};
 
 int OpenPort(const char *port_name, struct settings *config, HANDLE* file) 
 {
@@ -106,4 +117,70 @@ ULONG GetPorts(PULONG lpPortNumbers, ULONG uPortNumbersCount, PULONG puPortNumbe
 void ClosePort(HANDLE handle)
 {
     CloseHandle(handle);
+}
+
+LONG GetDeviceInfo(struct DeviceInfo *info, const char *path) {
+    HDEVINFO hDevInfo;
+    SP_DEVINFO_DATA DeviceInfoData;
+    DWORD i, DataT;
+    CHAR portName[MAX_PATH];
+    CHAR deviceInstanceID[MAX_PATH];
+    DWORD size = 0;
+
+    // Get handle to the device information set for all present USB devices
+    hDevInfo = SetupDiGetClassDevs(&GUID_DEVCLASS_USB, 0, 0, DIGCF_PRESENT | DIGCF_DEVICEINTERFACE);
+    if (hDevInfo == INVALID_HANDLE_VALUE) {
+        return 1;
+    }
+
+    // Enumerate through all devices in the set
+    DeviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
+    for (i = 0; SetupDiEnumDeviceInfo(hDevInfo, i, &DeviceInfoData); i++) {
+        if (!SetupDiGetDeviceRegistryPropertyA(hDevInfo, &DeviceInfoData, SPDRP_FRIENDLYNAME, &DataT,
+                                               (PBYTE)portName, sizeof(portName), NULL))
+            continue;
+        
+        if (!strstr(portName, path))
+            continue;
+
+        // Get the device instance ID
+        if (SetupDiGetDeviceInstanceIdA(hDevInfo, &DeviceInfoData, deviceInstanceID, sizeof(deviceInstanceID), &size)) {
+            // Extract VID and PID
+            char *vid = strstr(deviceInstanceID, "VID_");
+            char *pid = strstr(deviceInstanceID, "PID_");
+
+            if (vid && pid) {
+                snprintf(info->id, sizeof info->id, "%s:%s", vid, pid);
+            }
+        }
+
+        // Retrieve the device friendly name
+        char friendlyName[MAX_PATH] = "Not Available\0";
+        SetupDiGetDeviceRegistryPropertyA(hDevInfo, &DeviceInfoData, SPDRP_FRIENDLYNAME, &DataT,
+                                              (PBYTE)friendlyName, sizeof(friendlyName), NULL);
+        snprintf(info->product, sizeof info->product, "%s", friendlyName);
+
+        // Retrieve Manufacturer Name
+        char manufacturer[MAX_PATH] = "Not Available\0";
+        SetupDiGetDeviceRegistryPropertyA(hDevInfo, &DeviceInfoData, SPDRP_MFG, &DataT,
+                                              (PBYTE)manufacturer, sizeof(manufacturer), NULL);
+        snprintf(info->manufacturer, sizeof info->manufacturer, "%s", manufacturer);
+
+        // Retrieve Device Model
+        char model[MAX_PATH] = "Not Available\0";
+        SetupDiGetDeviceRegistryPropertyA(hDevInfo, &DeviceInfoData, SPDRP_DEVICEDESC, &DataT,
+                                              (PBYTE)model, sizeof(model), NULL);
+        snprintf(info->usb_model, sizeof info->usb_model, "%s", model);
+
+        // Retrieve Driver Name
+        char driver[MAX_PATH] = "Not Available\0";
+        SetupDiGetDeviceRegistryPropertyA(hDevInfo, &DeviceInfoData, SPDRP_DRIVER, &DataT,
+                                              (PBYTE)driver, sizeof(driver), NULL);
+        snprintf(info->driver, sizeof info->driver, "%s", driver);
+    }
+
+    // Cleanup
+    SetupDiDestroyDeviceInfoList(hDevInfo);
+
+    return 0;
 }
