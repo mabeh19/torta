@@ -136,11 +136,11 @@ LONG GetDeviceInfo(struct DeviceInfo *info, const char *path) {
     // Enumerate through all devices in the set
     DeviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
     for (i = 0; SetupDiEnumDeviceInfo(hDevInfo, i, &DeviceInfoData); i++) {
-        if (!SetupDiGetDeviceRegistryPropertyA(hDevInfo, SPDRP_FRIENDLYNAME, &DataT,
+        if (!SetupDiGetDeviceRegistryPropertyA(hDevInfo, &DeviceInfoData, SPDRP_FRIENDLYNAME, &DataT,
                                                (PBYTE)portName, sizeof(portName), NULL))
             continue;
         
-        if (!strstr(portName, comPort))
+        if (!strstr(portName, path))
             continue;
 
         // Get the device instance ID

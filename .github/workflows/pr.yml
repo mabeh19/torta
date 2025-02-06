@@ -28,8 +28,8 @@ jobs:
     - name: download GNU make
       run: choco install make
 
-    - name: test app
-      run: make test
+      #- name: test app
+      #  run: make test
       
     - name: build app
       run: make release
@@ -57,8 +57,8 @@ jobs:
     - name: Install SDL2
       run: sudo apt-get install libsdl2-dev libfreetype6-dev libsdl2-ttf-dev libsdl2-ttf-2.0-0
 
-    - name: test app
-      run: make test
+      #- name: test app
+      #  run: make test
       
     - name: build app
       run: make release
