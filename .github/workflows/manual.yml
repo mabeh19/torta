@@ -25,7 +25,7 @@ on:
         description: 'Is prerelease'
         required: true
         default: true
-        type: bool
+        type: boolean
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -55,15 +55,15 @@ jobs:
 
     - name: setup release folder
       run: |
-        mkdir win64-release
-        cp C:\Users\runneradmin\odin\vendor\sdl2\SDL2.dll win64-release
-        cp torta.exe win64-release
+        mkdir torta-win64
+        cp C:\Users\runneradmin\odin\vendor\sdl2\SDL2.dll torta-win64
+        cp torta.exe torta-win64
 
     - name: publish binary for release
       uses: actions/upload-artifact@v4
       with:
-        name: win64-release
-        path: win64-release
+        name: torta-win64
+        path: torta-win64
 
   build-linux:
     runs-on: ubuntu-latest
@@ -110,6 +110,7 @@ jobs:
         release_name: Release ${{ inputs.tag }}
         draft: false
         prerelease: ${{ inputs.isPrerelease }}
+        
     - name: Upload Windows Release
       id: upload-windows-release-asset 
       uses: actions/upload-release-asset@v1
@@ -117,9 +118,10 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /home/runner/work/torta/torta/win64-release.zip
+        asset_path: torta-win64/torta-win64.zip
         asset_name: torta-win64.zip
         asset_content_type: application/zip
+        
     - name: Upload Linux Release
       id: upload-linux-release-asset
       uses: actions/upload-release-asset@v1
@@ -127,6 +129,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: /home/runner/work/torta/torta/torta-linux64
+        asset_path: torta-linux64/torta-linux64.zip
         asset_name: torta-linux64
         asset_content_type: application
