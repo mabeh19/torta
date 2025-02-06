@@ -119,10 +119,11 @@ void ClosePort(HANDLE handle)
     CloseHandle(handle);
 }
 
-LONG ListUSBDevices(struct DeviceInfo* info) {
+LONG GetDeviceInfo(struct DeviceInfo *info, const char *path) {
     HDEVINFO hDevInfo;
     SP_DEVINFO_DATA DeviceInfoData;
     DWORD i, DataT;
+    CHAR portName[MAX_PATH];
     CHAR deviceInstanceID[MAX_PATH];
     DWORD size = 0;
 
@@ -135,6 +136,13 @@ LONG ListUSBDevices(struct DeviceInfo* info) {
     // Enumerate through all devices in the set
     DeviceInfoData.cbSize = sizeof(SP_DEVINFO_DATA);
     for (i = 0; SetupDiEnumDeviceInfo(hDevInfo, i, &DeviceInfoData); i++) {
+        if (!SetupDiGetDeviceRegistryPropertyA(hDevInfo, SPDRP_FRIENDLYNAME, &DataT,
+                                               (PBYTE)portName, sizeof(portName), NULL))
+            continue;
+        
+        if (!strstr(portName, comPort))
+            continue;
+
         // Get the device instance ID
         if (SetupDiGetDeviceInstanceIdA(hDevInfo, &DeviceInfoData, deviceInstanceID, sizeof(deviceInstanceID), &size)) {
             // Extract VID and PID
