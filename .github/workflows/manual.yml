@@ -115,6 +115,11 @@ jobs:
         release_name: Release ${{ inputs.tag }}
         draft: false
         prerelease: ${{ inputs.isPrerelease }}
+
+    - name: List artifacts
+      run: |
+        ls -r torta-win64
+        ls -r torta-linux64
         
     - name: Upload Windows Release
       id: upload-windows-release-asset 
