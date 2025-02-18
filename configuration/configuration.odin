@@ -6,12 +6,12 @@ import "core:encoding/json"
 import "core:path/filepath"
 import "core:log"
 import "core:time"
+
 import "../serial"
+import "../storage"
 
 LOCAL_TEST :: #config(LOCAL_TEST, false)
 
-DATA_DIR :: "torta"
-ROOT_DIR : string
 FILE_NAME :: "config.json"
 
 Configuration :: struct {
@@ -42,30 +42,9 @@ ENCODING_OPTIONS := json.Marshal_Options {
 
 config := Configuration{}
 
-init :: proc() 
-{
-    when ODIN_OS == .Linux {
-        home := os.get_env("HOME")
-        defer delete(home)
-        ROOT_DIR = fmt.aprintf("{}/.config/", home)
-    }
-    else when ODIN_OS == .Windows {
-        homedrive := os.get_env("HOMEDRIVE")
-        homepath := os.get_env("HOMEPATH")
-        defer delete(homedrive)
-        defer delete(homepath)
-        ROOT_DIR = fmt.aprintf("{}{}\\AppData\\Local\\", homedrive, homepath)
-    }
-    log.info("Configuration root path:", ROOT_DIR)
-}
-
 load :: proc()
 {
-    if ROOT_DIR == {} {
-        init()
-    }
-
-    config_path := filepath.join({ROOT_DIR, DATA_DIR, FILE_NAME})
+    config_path := storage.path({FILE_NAME})
     defer delete(config_path)
     
     log.info("Loading configuration file", config_path)
@@ -89,23 +68,17 @@ load :: proc()
 
 save :: proc() 
 {
-    if ROOT_DIR == {} {
-        init()
-    }
-
-    config_path := filepath.join({ROOT_DIR, DATA_DIR, FILE_NAME})
+    config_path := storage.path({FILE_NAME})
     defer delete(config_path)
 
     log.info("Saving configuration to", config_path)
     encoded, err := json.marshal(config, ENCODING_OPTIONS)
+    defer delete(encoded)
     if err != nil {
         log.error("Unable to encode configuration", err)
         return
     }
 
-    if err := os.make_directory(config_path[:len(ROOT_DIR) + len(DATA_DIR)]); err != nil && err != .Exist {
-        log.error("Unable to create app directory:", err)
-    }
     if os.write_entire_file(config_path, encoded) {
         log.info("Configuration saved!")
     }
@@ -118,5 +91,4 @@ cleanup :: proc()
 {
     delete(config.renderer)
     delete(config.defaultPortSettings.port)
-    delete(ROOT_DIR)
 }

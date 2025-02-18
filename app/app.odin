@@ -3,6 +3,7 @@ package app
 import "../view"
 import "../state"
 import "../configuration"
+import "../storage"
 import backend "../view/backends/microui"
 
 import ev "../event"
@@ -12,14 +13,25 @@ import "core:thread"
 import "core:time"
 import "core:fmt"
 import "core:log"
+import "core:os"
+import "core:strings"
 import "base:runtime"
 
 run :: proc()
 {
+    storage.init()
+    defer storage.cleanup()
+
     log_level := runtime.Logger_Level.Debug when ODIN_DEBUG else runtime.Logger_Level.Info
-    logger := log.create_console_logger(log_level)
+    logfile, err := create_log_file()
+    if err != .NONE {
+        log.errorf("Unable to open log file %v", err)
+        return
+    }
+    defer os.close(logfile)
+    logger := log.create_file_logger(logfile, log_level)
     context.logger = logger
-    defer log.destroy_console_logger(logger)
+    defer log.destroy_file_logger(logger)
     configuration.load()
     state.init()
     view.init()
@@ -47,3 +59,27 @@ when configuration.LOCAL_TEST {
     state.cleanup()
     configuration.cleanup()
 }
+
+create_log_file :: proc() -> (fd: os.Handle, err: os.Error)
+{
+    dateBuf := make([]u8, 32)
+    defer delete(dateBuf)
+    now := time.now()
+    date := time.to_string_yyyy_mm_dd(now, dateBuf)
+    builder : strings.Builder
+    strings.builder_init(&builder)
+    defer strings.builder_destroy(&builder)
+    strings.write_string(&builder, date)
+    strings.write_string(&builder, ".log")
+
+    base_dir := storage.path({"logs"})
+    defer delete(base_dir)
+
+    os.make_directory(base_dir)
+
+    fp := storage.path({"logs", strings.to_string(builder)})
+    defer delete(fp)
+
+    return os.open(fp, os.O_WRONLY | os.O_APPEND | os.O_CREATE, os.S_IWUSR | os.S_IRUSR | os.S_IRGRP | os.S_IROTH)
+}
+
