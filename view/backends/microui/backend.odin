@@ -30,6 +30,7 @@ state := struct {
     window: ^sdl.Window,
     renderer: ^sdl.Renderer,
     atlas_texture: ^sdl.Texture,
+    gl_context: sdl.GLContext,
     should_close: bool,
     forward_input: bool,
     fonts: [dynamic]^mu.Font,
@@ -150,6 +151,7 @@ forward_input :: proc(forward: bool)
 close_window :: proc ()
 {
     sdl.DestroyRenderer(state.renderer)
+    sdl.GL_DeleteContext(state.gl_context)
     sdl.DestroyWindow(state.window)
     sdl.Quit()
 }
@@ -216,7 +218,7 @@ r_init :: proc(width: int, height: int)
     state.window = sdl.CreateWindow("torta", 
                                     sdl.WINDOWPOS_UNDEFINED, sdl.WINDOWPOS_UNDEFINED, 
                                     i32(width), i32(height), sdl.WINDOW_OPENGL | sdl.WINDOW_RESIZABLE)
-    sdl.GL_CreateContext(state.window)
+    state.gl_context = sdl.GL_CreateContext(state.window)
 
     configured_renderer := configuration.config.renderer
     configured_renderer = proc(renderer: cstring) -> cstring {
@@ -263,13 +265,13 @@ r_init :: proc(width: int, height: int)
 		return
 	}
 
-	pixels := make([][4]u8, mu.DEFAULT_ATLAS_WIDTH*mu.DEFAULT_ATLAS_HEIGHT)
+	@static pixels : [mu.DEFAULT_ATLAS_WIDTH*mu.DEFAULT_ATLAS_HEIGHT][4]u8
 	for alpha, i in mu.default_atlas_alpha {
 		pixels[i].rgb = 0xff
 		pixels[i].a   = alpha
 	}
 
-	if err := sdl.UpdateTexture(state.atlas_texture, nil, raw_data(pixels), 4*mu.DEFAULT_ATLAS_WIDTH); err != 0 {
+	if err := sdl.UpdateTexture(state.atlas_texture, nil, raw_data(pixels[:]), 4*mu.DEFAULT_ATLAS_WIDTH); err != 0 {
         log.error("Unable to update texture: ", sdl.GetError())
 		return
 	}

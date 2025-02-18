@@ -15,8 +15,12 @@ import "core:thread"
 import "core:os"
 import "core:io"
 import "core:sync"
+import mem "core:mem/virtual"
 
 State :: struct {
+    // Base
+    arena: mem.Arena,
+
     // Data
     dataBufferLock: sync.Mutex,
     dataBuffer: rb.RingBuffer(u8),
@@ -73,6 +77,10 @@ when configuration.LOCAL_TEST {
     }
     state.ports = test_data[:]
 }
+
+    _ = mem.arena_init_growing(&state.arena)
+    context.allocator = mem.arena_allocator(&state.arena)
+
     config := &configuration.config
     state.dataBuffer = rb.new(config.historyLength, u8, config.infiniteHistory)
 
@@ -212,6 +220,11 @@ when configuration.LOCAL_TEST {
 
     // Load ports at startup
     ev.signal(&ue.refreshPortsEvent)
+}
+
+cleanup :: proc()
+{
+    mem.arena_destroy(&state.arena)
 }
 
 get_state :: proc() -> ^State 
