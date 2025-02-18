@@ -70,6 +70,7 @@ load :: proc()
     
     log.info("Loading configuration file", config_path)
     if data, ok := os.read_entire_file(config_path); ok {
+        defer delete(data)
         if err := json.unmarshal(data, &config); err != nil {
             log.error("Unable to parse configuration file:", err)
         }
@@ -111,4 +112,11 @@ save :: proc()
     else {
         log.error("Unable to save configuration to", config_path)
     }
+}
+
+cleanup :: proc()
+{
+    delete(config.renderer)
+    delete(config.defaultPortSettings.port)
+    delete(ROOT_DIR)
 }

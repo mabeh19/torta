@@ -52,7 +52,7 @@ get_device_info :: proc(port: string) -> (info: DeviceInfo)
 
     if device_id, ok := os.read_entire_file(device_id_path); ok {
         trimmed_id := strings.trim(string(device_id), "\n")
-        full_id := strings.Builder{}
+        full_id : strings.Builder
         strings.builder_init(&full_id)
         defer strings.builder_destroy(&full_id)
 

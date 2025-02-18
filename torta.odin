@@ -1,45 +1,24 @@
 package torta
 
+import "app"
+
 import "core:fmt"
-import "core:log"
-import "base:runtime"
-
-import "view"
-import "state"
-import "configuration"
-import backend "view/backends/microui"
-
-import ev "event"
-import pe "process_events"
-import "core:thread"
-import "core:time"
+import "core:mem"
 
 main :: proc()
 {
-    log_level := runtime.Logger_Level.Debug when ODIN_DEBUG else runtime.Logger_Level.Info
-    context.logger = log.create_console_logger(log_level)
-    configuration.load()
-    state.init()
-    view.init()
-
-when configuration.LOCAL_TEST {
-    thread.create_and_start(proc() {
-        iter := 0
-        for {
-            str : string = "this is a very long line of text that will surely cause a line break and fill a lot\n"
-            msg := fmt.aprintf("[%v] %v", iter, str)
-            defer delete(msg)
-            ev.signal(&pe.dataReceivedEvent, transmute([]u8)msg)
-
-            iter += 1
-            time.sleep(20 * time.Millisecond)
-        }
-    })
+when ODIN_DEBUG {
+    ta : mem.Tracking_Allocator
+    mem.tracking_allocator_init(&ta, context.allocator)
+    defer mem.tracking_allocator_destroy(&ta)
+    context.allocator = mem.tracking_allocator(&ta)
 }
+    
+    app.run()
 
-    for !view.should_close() {
-        backend.draw(view.draw)
-    }
-
-    view.close()
+when ODIN_DEBUG {
+    for _, leak in ta.allocation_map {
+		fmt.printf("%v leaked %m\n", leak.location, leak.size)
+	}
+}
 }

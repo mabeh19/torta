@@ -10,6 +10,7 @@ import "core:strconv"
 import "core:log"
 import "core:bytes"
 import "core:sync"
+import "core:mem/virtual"
 
 import ue "../user_events"
 import pe "../process_events"
@@ -31,6 +32,7 @@ SCREEN_HEIGHT   :: 480
 
 
 ViewState :: struct {
+    frame_memory: virtual.Arena,
     font: mu.Font,
     font_size: f32,
     font_spacing: f32,
@@ -48,6 +50,7 @@ view_state_ := ViewState{}
 @(export, link_prefix=EXPORT_NAMESPACE)
 init :: proc ()
 {
+    _ = virtual.arena_init_growing(&view_state_.frame_memory)
     backend.init(SCREEN_WIDTH, SCREEN_HEIGHT)
     init_settings()
     register_event_handlers()
@@ -63,6 +66,7 @@ labelf :: proc(ctx: ^mu.Context, f: string, args: ..any)
 @(export, link_prefix=EXPORT_NAMESPACE)
 draw :: proc (ctx: ^mu.Context)
 {
+    context.allocator = virtual.arena_allocator(&view_state_.frame_memory)
     // Drawing logic
     opts := mu.Options {
         .NO_RESIZE,
@@ -133,6 +137,7 @@ draw :: proc (ctx: ^mu.Context)
             }
         }
     }
+    virtual.arena_destroy(&view_state_.frame_memory)
 }
 
 @(export, link_prefix=EXPORT_NAMESPACE)
@@ -292,7 +297,8 @@ import "../keycode_translator"
 @(private)
 register_event_handlers :: proc()
 {
-    ev.listen(&ue.rawKeypressEvent, proc (kev: sdl.KeyboardEvent) {
+    @static keyPressListener : ev.EventSub(sdl.KeyboardEvent)
+    ev.listen(&ue.rawKeypressEvent, &keyPressListener, proc (kev: sdl.KeyboardEvent) {
         encoded_sym, ok := keycode_translator.translate_symbol(kev.keysym)
         if !ok { 
             log.warnf("Input not forwarded: %v", kev.keysym)
