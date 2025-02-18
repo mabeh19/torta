@@ -24,7 +24,7 @@ run :: proc()
 
     log_level := runtime.Logger_Level.Debug when ODIN_DEBUG else runtime.Logger_Level.Info
     logfile, err := create_log_file()
-    if err != .NONE {
+    if err != nil {
         log.errorf("Unable to open log file %v", err)
         return
     }
