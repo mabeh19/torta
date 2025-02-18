@@ -80,6 +80,12 @@ create_log_file :: proc() -> (fd: os.Handle, err: os.Error)
     fp := storage.path({"logs", strings.to_string(builder)})
     defer delete(fp)
 
-    return os.open(fp, os.O_WRONLY | os.O_APPEND | os.O_CREATE, os.S_IWUSR | os.S_IRUSR | os.S_IRGRP | os.S_IROTH)
+when ODIN_OS == .Linux {
+    accessFlags := os.S_IRUSR | os.S_IWUSR | os.S_IRGRP | os.S_IROTH
+}
+else when ODIN_OS == .Windows {
+    accessFlags := 0
+}
+    return os.open(fp, os.O_WRONLY | os.O_APPEND | os.O_CREATE, accessFlags)
 }
 
