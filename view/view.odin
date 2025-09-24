@@ -43,6 +43,8 @@ ViewState :: struct {
     data: struct {
         lines: u32,
     },
+
+    displayBuffer : [dynamic]u8
 }
 
 view_state_ := ViewState{}
@@ -54,6 +56,8 @@ init :: proc ()
     backend.init(SCREEN_WIDTH, SCREEN_HEIGHT)
     init_settings()
     register_event_handlers()
+
+    view_state_.displayBuffer = make([dynamic]u8)
 }
 
 labelf :: proc(ctx: ^mu.Context, f: string, args: ..any)
@@ -62,6 +66,7 @@ labelf :: proc(ctx: ^mu.Context, f: string, args: ..any)
     defer delete(s)
     mu.label(ctx, s)
 }
+
 
 @(export, link_prefix=EXPORT_NAMESPACE)
 draw :: proc (ctx: ^mu.Context)
@@ -144,6 +149,7 @@ draw :: proc (ctx: ^mu.Context)
 close :: proc ()
 {
     backend.close_window()
+    delete(view_state_.displayBuffer)
 }
 
 
@@ -176,7 +182,6 @@ to_cstring :: proc(buf: []u8) -> cstring
 @(private)
 draw_data_view :: proc(ctx: ^mu.Context)
 {
-    @static displayBuffer : [dynamic]u8
     @static prevRead := 0
 
     state := s.get_state()
@@ -185,14 +190,14 @@ draw_data_view :: proc(ctx: ^mu.Context)
         sync.lock(&state.dataBufferLock)
         defer sync.unlock(&state.dataBufferLock)
 
-        resize(&displayBuffer, s.data_buffer_size())
+        resize(&view_state_.displayBuffer, s.data_buffer_size())
 
         first, second := rb.parts(state.dataBuffer)
 
-        copy(displayBuffer[:len(first)], first[:])
+        copy(view_state_.displayBuffer[:len(first)], first[:])
 
         if len(second) > 0 {
-            copy(displayBuffer[len(first):], second[:])
+            copy(view_state_.displayBuffer[len(first):], second[:])
         }
 
         //if state.bytesRead == 0 {
@@ -207,8 +212,12 @@ draw_data_view :: proc(ctx: ^mu.Context)
     panel := mu.get_current_container(ctx)
     mu.layout_row(ctx, {-1}, -1)
     {
-        
-        mu.text(ctx, transmute(string)displayBuffer[:])
+        if len(view_state_.displayBuffer) > 0 {
+            mu.text(ctx, transmute(string)view_state_.displayBuffer[:])
+        }
+        else {
+            mu.text(ctx, "No data received yet")
+        }
     }
     mu.end_panel(ctx)
     
@@ -306,6 +315,11 @@ register_event_handlers :: proc()
         }
 
         ev.signal(&ue.sendEvent, transmute([]u8)encoded_sym)
+    })
+
+    @static dataReceivedListener : ev.EventSub([]u8)
+    ev.listen(&pe.dataReceivedEvent, &dataReceivedListener, proc (data: []u8) {
+        backend.push_frame_update_event()
     })
 }
 

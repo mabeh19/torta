@@ -11,6 +11,8 @@ import ev "../../../event"
 import ue "../../../user_events"
 import "../../../configuration"
 
+TARGET_FPS :: 20
+
 BACKGROUND :: mu.Color{90, 95, 100, 255}
 WIDTH  :: 800
 HEIGHT :: 600
@@ -34,6 +36,7 @@ state := struct {
     should_close: bool,
     forward_input: bool,
     fonts: [dynamic]^mu.Font,
+    updateScreen: bool,
 }{}
 
 push_font :: proc(font: ^mu.Font)
@@ -60,6 +63,11 @@ window_width :: proc() -> i32
     h := i32{}
     sdl.GetWindowSize(state.window, &w, &h)
     return w
+}
+
+push_frame_update_event :: proc()
+{
+    state.updateScreen = true
 }
 
 init :: proc (width: int, height: int)
@@ -125,21 +133,27 @@ draw :: proc (draw_screen: proc(ctx: ^mu.Context))
             case .RETURN:    fn(ctx, .RETURN)
             case .KP_ENTER:  fn(ctx, .RETURN)
             case .BACKSPACE: fn(ctx, .BACKSPACE)
-            } 
+            }
         }
+
+        state.updateScreen = true
     }
 
-    // Draw
-    mu.begin(ctx)
-    {
-        draw_screen(ctx)
+    if state.updateScreen {
+        // Draw
+        mu.begin(ctx)
+        {
+            draw_screen(ctx)
+        }
+        mu.end(ctx)
+
+        // render
+        render()
     }
-    mu.end(ctx)
 
-    // render
-    render()
+    state.updateScreen = false
 
-    time.sleep(10)
+    time.sleep(1000 / TARGET_FPS)
 }
 
 forward_input :: proc(forward: bool)

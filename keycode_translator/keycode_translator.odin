@@ -1,6 +1,6 @@
 package keycode_translator
 
-import "core:encoding/ansi"
+import "core:terminal/ansi"
 import sdl "vendor:sdl2"
 
 translate_symbol :: proc(sym: sdl.Keysym) -> (encoded: string = "", ok: bool = true)

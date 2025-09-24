@@ -8,9 +8,9 @@
 #include <string.h>
 #include <ctype.h>
 
-#define error_message(...) do { \
+#define error_message(fmt, ...) do { \
         FILE* log = fopen(".log", "a+"); \
-        fprintf(log, __VA_ARGS__); \
+        fprintf(log, fmt "\n" __VA_OPT__(, __VA_ARGS__)); \
         fclose(log);    \
     } while (0)
 
@@ -70,7 +70,7 @@ void set_blocking(int fd, int should_block)
     }
 
     tty.c_cc[VMIN]  = should_block ? 1 : 0;
-    tty.c_cc[VTIME] = 5;            // 0.5 seconds read timeout
+    tty.c_cc[VTIME] = 1;            // 0.1 seconds read timeout
 
     if (tcsetattr(fd, TCSANOW, &tty) != 0)
         error_message ("error %d setting term attributes", errno);

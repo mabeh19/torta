@@ -6,3 +6,4 @@ import ev "../event"
 dataReceivedEvent := ev.new([]u8, "Data Received")
 lineReadEvent := ev.new("Line Read")
 lineUnreadEvent := ev.new("Line Unread")
+frameUpdateEvent := ev.new("Frame Update")

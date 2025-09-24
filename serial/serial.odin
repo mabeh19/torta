@@ -20,7 +20,7 @@ foreign sl {
 
 
 Port :: struct {
-    file: os.Handle
+    file: Maybe(os.Handle)
 }
 
 
@@ -57,12 +57,53 @@ open_port :: proc(settings: PortSettings) -> (port: Port, ok: bool)
     cport := strings.clone_to_cstring(settings.port)
     defer delete(cport)
 
-    ok = OpenPort(cport, &settings_internal, &port.file)
+    fd : os.Handle
+    ok = OpenPort(cport, &settings_internal, &fd)
+
+    if ok {
+        port.file = fd
+    }
 
     return port, ok
 }
 
 close_port :: proc(port: ^Port) 
 {
-    ClosePort(c.int(port.file))
+    if fd, ok := port.file.?; ok {
+        ClosePort(c.int(fd))
+        port.file = nil
+    }
+}
+
+is_open :: proc(port: Port) -> bool
+{
+    _, ok := port.file.?
+    return ok
+}
+
+send :: proc(port: Port, data: []u8)
+{
+    if fd, ok := port.file.?; ok {
+        os.write(fd, data)
+    }
+}
+
+read :: proc(port: Port) -> (data: u8, ok: bool)
+{
+    b := [1]u8{}
+
+    if fd, ok := port.file.?; ok {
+        pfd := os.pollfd {
+            fd = c.int(fd),
+            events = 1,
+            revents = 0
+        }
+        if avail, err := os.poll({pfd}, 0); avail > 0 && err == nil {
+            if n, err := os.read(fd, b[:]); err == nil && n > 0 {
+                return b[0], true
+            }
+        }
+    }
+
+    return {}, {}
 }

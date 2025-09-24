@@ -7,7 +7,6 @@ import pe "../process_events"
 import rb "../ringbuffer"
 import "../serial"
 import "../internal"
-import "../process"
 import "../configuration"
 
 import "core:log"
@@ -52,7 +51,7 @@ state := State {
 }
 
 port_is_open :: proc() -> bool {
-    return state.reader != nil
+    return serial.is_open(state.port)
 }
 
 data_buffer_size :: proc() -> int {
@@ -115,20 +114,26 @@ when configuration.LOCAL_TEST {
 
             if state.port, ok  = serial.open_port(state.portSettings); ok {
                 log.debug("Starting reader")
-                state.reader = process.read_port_async(state.port.file)
             }
             else {
                 log.debug("Failed to open port")
-                state.reader = nil
             }
         }
         else {
             log.debug("Closing port")
             serial.close_port(&state.port)
+        }
+    })
 
-            if state.reader != nil {
-                thread.terminate(state.reader, 0)
-                state.reader = nil
+    ev.listen(&pe.frameUpdateEvent, proc() {
+        if port_is_open() {
+            b := [1]u8{}
+            ok := false
+            for {
+                if b[0], ok = serial.read(state.port); !ok {
+                    break
+                }
+                ev.signal(&pe.dataReceivedEvent, b[:])
             }
         }
     })
@@ -137,16 +142,16 @@ when configuration.LOCAL_TEST {
         send :: proc(data: []u8) {
             log.debugf("Pushing %v bytes: %v", len(data), data)
             if state.echo {
-                rb.push(&state.dataBuffer, data)
+                ev.signal(&pe.dataReceivedEvent, data)
             }
-            os.write(state.port.file, data)
+            serial.send(state.port, data)
         }
         send_byte :: proc(data: u8) {
             log.debugf("Pushing byte: %v", data)
             if state.echo {
-                rb.push(&state.dataBuffer, data)
+                ev.signal(&pe.dataReceivedEvent, []u8{data})
             }
-            os.write_byte(state.port.file, data)
+            serial.send(state.port, {data})
         }
 
         send(data)

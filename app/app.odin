@@ -52,6 +52,7 @@ when configuration.LOCAL_TEST {
 }
 
     for !view.should_close() {
+        ev.signal(&pe.frameUpdateEvent)
         backend.draw(view.draw)
     }
 
