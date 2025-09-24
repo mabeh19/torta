@@ -16,6 +16,7 @@ foreign import sl "serial_windows_backend.lib"
 foreign sl {
     OpenPort :: proc(cstring, ^PortSettingsInternal, ^os.Handle) -> bool ---
     ClosePort :: proc(fd: c.int) ---
+    Poll :: proc(fd: os.Handle) -> bool ---
 }
 
 
@@ -93,12 +94,7 @@ read :: proc(port: Port) -> (data: u8, ok: bool)
     b := [1]u8{}
 
     if fd, ok := port.file.?; ok {
-        pfd := os.pollfd {
-            fd = c.int(fd),
-            events = 1,
-            revents = 0
-        }
-        if avail, err := os.poll({pfd}, 0); avail > 0 && err == nil {
+        if Poll(fd) {
             if n, err := os.read(fd, b[:]); err == nil && n > 0 {
                 return b[0], true
             }

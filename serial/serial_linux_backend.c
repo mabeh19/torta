@@ -149,3 +149,17 @@ void ClosePort(int fd)
     close(fd);
 }
 
+#include <poll.h>
+
+bool Poll(int fd)
+{
+    struct pollfd pfds[] = {
+        {
+            .fd = fd,
+            .events = POLLIN,
+            .revents = 0
+        },
+    };
+
+    return poll(pfds, 1, 0) > 0;
+}

@@ -184,3 +184,15 @@ LONG GetDeviceInfo(struct DeviceInfo *info, const char *path) {
 
     return 0;
 }
+
+bool Poll(HANDLE handle) {
+    COMSTAT comStat;
+    DWORD errors;
+
+    if (!ClearCommError(handle, &errors, &comStat)) {
+        fprintf(stderr, "Error clearing comm error: %d\n", GetLastError());
+        return false;
+    }
+
+    return comStat.cbInQue > 0;
+}
