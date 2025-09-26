@@ -17,6 +17,8 @@ import "core:os"
 import "core:strings"
 import "base:runtime"
 
+TARGET_FPS :: 20
+
 run :: proc()
 {
     storage.init()
@@ -52,8 +54,15 @@ when configuration.LOCAL_TEST {
 }
 
     for !view.should_close() {
-        ev.signal(&pe.frameUpdateEvent)
-        backend.draw(view.draw)
+        update := false
+        update ||= state.read_new_data()
+        update ||= view.event_pending()
+
+        if update {
+            backend.draw(view.draw)
+        }
+            
+        time.sleep(1000 / TARGET_FPS * time.Millisecond)
     }
 
     view.close()

@@ -12,12 +12,13 @@ DeviceInfo :: struct {
     manufacturer:       [256]byte,
     product:            [256]byte,
     driver:             [256]byte,
-    usb_model:          [256]byte,
+    serialnum:          [256]byte,
     id:                 [10]byte,
+    revision:           [10]byte,
 }
 
 SerialPort :: struct {
-    port_name:  string,
+    port_name:  [256]byte,
     info:       DeviceInfo,
 }
 

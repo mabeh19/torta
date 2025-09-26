@@ -58,15 +58,24 @@ init :: proc ()
     register_event_handlers()
 
     view_state_.displayBuffer = make([dynamic]u8)
+
+    if conf.config.font.name == "" {
+        conf.config.font = conf.DEFAULT_CONFIG.font
+    }
+    backend.set_data_font(conf.config.font.name, conf.config.font.size)
 }
 
 labelf :: proc(ctx: ^mu.Context, f: string, args: ..any)
 {
-    s := fmt.aprintf(f, args)
+    s := fmt.aprintf(f, ..args)
     defer delete(s)
     mu.label(ctx, s)
 }
 
+event_pending :: proc() -> bool
+{
+    return backend.event_pending()
+}
 
 @(export, link_prefix=EXPORT_NAMESPACE)
 draw :: proc (ctx: ^mu.Context)
@@ -91,12 +100,13 @@ draw :: proc (ctx: ^mu.Context)
             draw_settings(ctx)
         }
         else {
-            mu.layout_row(ctx, {-80, -1}, -1)
+            mu.layout_row(ctx, {-100, -1}, -1)
             // Column 1
             {
                 mu.layout_begin_column(ctx)
                 defer mu.layout_end_column(ctx)
 
+                draw_port_info(ctx)
                 height : i32 = state.bufferedMode ? -40 : -1
                 mu.layout_row(ctx, {-1}, height)
                 draw_data_view(ctx)
@@ -112,6 +122,7 @@ draw :: proc (ctx: ^mu.Context)
                 mu.layout_begin_column(ctx)
                 defer mu.layout_end_column(ctx)
 
+                mu.layout_row(ctx, {-1}, 20)
                 if mu.button(ctx, "Settings") == {.SUBMIT} {
                     view_state_.in_settings = true
                     tmp_settings_ = settings_
@@ -119,20 +130,27 @@ draw :: proc (ctx: ^mu.Context)
                 draw_port_toggle(ctx)
 
                 // Clear
+                mu.layout_row(ctx, {-1}, 20)
                 if mu.button(ctx, "Clear") == {.SUBMIT} {
                     ev.signal(&ue.clearEvent)
                     view_state_.data.lines = 0
                 }
 
                 // Autoscroll
+                mu.layout_row(ctx, {-1}, 20)
                 mu.checkbox(ctx, "Autoscroll", &view_state_.auto_scroll)
 
                 // Text settings
+                mu.layout_row(ctx, {-1}, 20)
                 mu.checkbox(ctx, "Echo", &state.echo)
+                mu.layout_row(ctx, {-1}, 20)
                 mu.checkbox(ctx, "Append nl", &state.appendNewLine)
+                mu.layout_row(ctx, {-1}, 20)
                 mu.checkbox(ctx, "Append cr", &state.appendCarriageReturn)
+                mu.layout_row(ctx, {-1}, 20)
                 mu.checkbox(ctx, "Append 0", &state.appendNullByte)
 
+                mu.layout_row(ctx, {-1}, 20)
                 if .CHANGE in mu.checkbox(ctx, "Buffered", &state.bufferedMode) {
                     backend.forward_input(!state.bufferedMode)
                 }
@@ -182,38 +200,14 @@ to_cstring :: proc(buf: []u8) -> cstring
 @(private)
 draw_data_view :: proc(ctx: ^mu.Context)
 {
-    @static prevRead := 0
-
     state := s.get_state()
-
-    if prevRead != state.bytesRead {
-        sync.lock(&state.dataBufferLock)
-        defer sync.unlock(&state.dataBufferLock)
-
-        resize(&view_state_.displayBuffer, s.data_buffer_size())
-
-        first, second := rb.parts(state.dataBuffer)
-
-        copy(view_state_.displayBuffer[:len(first)], first[:])
-
-        if len(second) > 0 {
-            copy(view_state_.displayBuffer[len(first):], second[:])
-        }
-
-        //if state.bytesRead == 0 {
-        //    displayBuffer[0] = 0
-        //    //displayBuffer[1] = 0
-        //}
-
-        prevRead = state.bytesRead
-    }
 
     mu.begin_panel(ctx, "Data window")
     panel := mu.get_current_container(ctx)
     mu.layout_row(ctx, {-1}, -1)
     {
-        if len(view_state_.displayBuffer) > 0 {
-            mu.text(ctx, transmute(string)view_state_.displayBuffer[:])
+        if state.bytesRead > 0 {
+            mu.text(ctx, transmute(string)state.dataBuffer.data[:])
         }
         else {
             mu.text(ctx, "No data received yet")
@@ -266,10 +260,11 @@ draw_file_io :: proc(ctx: ^mu.Context)
         @static filepath := [1024]u8{}
         @static filepath_len := 0
 
-        mu.layout_row(ctx, {-1}, 60)
         mu.layout_begin_column(ctx)
         defer mu.layout_end_column(ctx)
+        mu.layout_row(ctx, {-1}, 20)
         mu.textbox(ctx, filepath[:], &filepath_len)
+        mu.layout_row(ctx, {-1}, 20)
         if .SUBMIT in mu.button(ctx, "Send file") {
             ev.signal(&ue.sendFile, transmute(string)filepath[:])
         }
@@ -280,23 +275,45 @@ draw_file_io :: proc(ctx: ^mu.Context)
         @static filepath := [1024]u8{}
         @static filepath_len := 0
 
-        mu.layout_row(ctx, {-1}, 60)
         mu.layout_begin_column(ctx)
         defer mu.layout_end_column(ctx)
+        mu.layout_row(ctx, {-1}, 20)
         mu.textbox(ctx, filepath[:], &filepath_len)
         disabled := mu.Options { .NO_INTERACT, .ALIGN_CENTER }
         enabled := mu.Options { .ALIGN_CENTER }
         start_opts := state.tracing ? disabled : enabled
         stop_opts  := state.tracing ? enabled : disabled
+        mu.layout_row(ctx, {-1}, 20)
         if .SUBMIT in mu.button(ctx, "Start", opt = start_opts) {
             ev.signal(&ue.startTrace, transmute(string)filepath[:])
             mu.set_focus(ctx, 0)
         }
+        mu.layout_row(ctx, {-1}, 20)
         if .SUBMIT in mu.button(ctx, "Stop", opt = stop_opts) {
             ev.signal(&ue.stopTrace)
             mu.set_focus(ctx, 0)
         }
     }
+}
+
+@private
+draw_port_info :: proc(ctx: ^mu.Context)
+{
+    state := s.get_state()
+    mu.layout_row(ctx, {-1}, 20)
+
+    if state.portSettings.port == "" {
+        labelf(ctx, "No port selected")
+        return
+    }
+
+    parity := "N"
+    switch Parity(state.portSettings.parity) {
+    case .None: parity = "N"
+    case .Even: parity = "E"
+    case .Odd:  parity = "O"
+    }
+    labelf(ctx, "%v - %v %v%v%v", state.portSettings.port, state.portSettings.baudrate, 8, parity, state.portSettings.stopBits)
 }
     
 

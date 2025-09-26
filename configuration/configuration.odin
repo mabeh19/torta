@@ -14,12 +14,18 @@ LOCAL_TEST :: #config(LOCAL_TEST, false)
 
 FILE_NAME :: "config.json"
 
+FontSettings :: struct {
+    name: cstring,
+    size: int
+}
+
 Configuration :: struct {
     pollingPeriod: time.Duration,
     historyLength: int,
     infiniteHistory: bool,
     defaultPortSettings: serial.PortSettings,
     renderer: cstring,
+    font: FontSettings
 }
 
 DEFAULT_CONFIG := Configuration {
@@ -33,6 +39,10 @@ DEFAULT_CONFIG := Configuration {
         blocking = false,
     },
     renderer = "opengl",
+    font = {
+        name = "assets/fonts/default.ttf",
+        size = 12,
+    },
 }
 
 ENCODING_OPTIONS := json.Marshal_Options {

@@ -32,9 +32,9 @@ get_serial_ports_internal :: proc(ports: []SerialPort) -> int
 
         log.debug("Adding ", f.fullpath)
         ports[numPorts] = SerialPort {
-            port_name = f.fullpath,
             info = get_device_info(f.name),
         }
+        fmt.bprintf(ports[numPorts].port_name[:], "%s", f.fullpath)
         numPorts += 1
 
         if numPorts == len(ports) {
@@ -73,43 +73,48 @@ get_device_info :: proc(port: string) -> (info: DeviceInfo)
             return
         }
 
-        manufacturer := udev.udev_device_get_property_value(dev, "ID_VENDOR_FROM_DATABASE")
-        product := udev.udev_device_get_property_value(dev, "ID_MODEL_FROM_DATABASE")
+        manufacturer := udev.udev_device_get_property_value(dev, "ID_VENDOR")
+        product := udev.udev_device_get_property_value(dev, "ID_MODEL")
         vid := udev.udev_device_get_property_value(dev, "ID_VENDOR_ID")
         pid := udev.udev_device_get_property_value(dev, "ID_MODEL_ID")
         driver := udev.udev_device_get_property_value(dev, "ID_USB_DRIVER")
-        usb_model := udev.udev_device_get_property_value(dev, "ID_USB_MODEL")
+        serialnumber := udev.udev_device_get_property_value(dev, "ID_USB_SERIAL_SHORT")
+        revision := udev.udev_device_get_property_value(dev, "ID_REVISION")
 
         if manufacturer == nil {
             log.errorf("Error reading manufacturer for %v", port)
-            return
         }
+
         if product == nil {
             log.errorf("Error reading product for %v", port)
-            return
         }
+
         if vid == nil {
             log.errorf("Error reading vid for %v", port)
-            return
         }
+
         if pid == nil {
             log.errorf("Error reading pid for %v", port)
-            return
         }
+
         if driver == nil {
             log.errorf("Error reading driver for %v", port)
-            return
         }
-        if usb_model == nil {
-            log.errorf("Error reading usb model for %v", port)
-            return
+
+        if serialnumber == nil {
+            log.errorf("Error reading serialnumber for %v", port)
+        }
+
+        if revision == nil {
+            log.errorf("Error reading revision for %v", port)
         }
 
         fmt.bprintf(info.manufacturer[:], "%v", manufacturer)
         fmt.bprintf(info.product[:], "%v", product)
         fmt.bprintf(info.id[:], "%v:%v", vid, pid)
         fmt.bprintf(info.driver[:], "%v", driver)
-        fmt.bprintf(info.usb_model[:], "%v", usb_model)
+        fmt.bprintf(info.serialnum[:], "%v", serialnumber)
+        fmt.bprintf(info.revision[:], "%v", revision)
     }
     else {
         log.errorf("Error reading device ID for %v", port)

@@ -3,15 +3,17 @@ package backend
 import "core:os"
 import "core:log"
 import "core:time"
+import "core:c"
+import "core:strings"
 
 import sdl "vendor:sdl2"
+import ttf "vendor:sdl2/ttf"
 import mu "vendor:microui"
 
 import ev "../../../event"
 import ue "../../../user_events"
 import "../../../configuration"
 
-TARGET_FPS :: 20
 
 BACKGROUND :: mu.Color{90, 95, 100, 255}
 WIDTH  :: 800
@@ -27,6 +29,20 @@ SUPPORTED_RENDERERS :: []cstring{
 @private
 mu_ctx := mu.Context{}
 
+Glyph :: struct {
+    src: sdl.Rect,
+    advance: i32,
+    bearing_x: i32,
+    bearing_y: i32,
+}
+
+FontAtlas :: struct {
+    texture: ^sdl.Texture,
+    glyphs: [128]Glyph,
+    ascent: i32,
+    descent: i32,
+    line_skip: i32,
+}
 
 state := struct {
     window: ^sdl.Window,
@@ -35,13 +51,104 @@ state := struct {
     gl_context: sdl.GLContext,
     should_close: bool,
     forward_input: bool,
-    fonts: [dynamic]^mu.Font,
+    data_font: FontAtlas,
+    ui_font: FontAtlas,
     updateScreen: bool,
 }{}
 
-push_font :: proc(font: ^mu.Font)
+set_data_font :: proc(font: cstring, size: int)
 {
+    if state.data_font.texture != nil {
+        sdl.DestroyTexture(state.data_font.texture)
+    }
 
+    if font == "" || size == 0 {
+        return
+    }
+
+    f := ttf.OpenFont(font, c.int(size))
+    if f == nil {
+        log.error("Failed to load font ", font, ": ", ttf.GetError())
+    }
+    else {
+        defer ttf.CloseFont(f)
+
+        ttf.SetFontHinting(f, .NORMAL)
+        
+        state.data_font.ascent = ttf.FontAscent(f)
+        state.data_font.descent = ttf.FontDescent(f)
+        state.data_font.line_skip = ttf.FontLineSkip(f)
+
+        atlasW : c.int = 512
+        atlasH : c.int = 512
+        surface := sdl.CreateRGBSurfaceWithFormat(0, atlasW, atlasH, 32, u32(sdl.PixelFormatEnum.RGBA8888))
+        defer sdl.FreeSurface(surface)
+
+        x : i32 = 0
+        y : i32 = 0
+        rowHeight : i32 = 0
+
+        for ch in 32 ..< 128 {
+            gs := ttf.RenderGlyph_Blended(f, u16(ch), sdl.Color{255, 255, 255, 255})
+            defer sdl.FreeSurface(gs)
+
+            if gs == nil {
+                log.error("Failed to render glyph ", ch, ": ", ttf.GetError())
+                continue
+            }
+
+            if x + gs.w >= atlasW {
+                x = 0
+                y += rowHeight + 1
+                rowHeight = 0
+            }
+
+            dst := sdl.Rect {c.int(x), c.int(y), gs.w, gs.h}
+            sdl.SetSurfaceBlendMode(gs, .NONE)
+            sdl.BlitSurface(gs, nil, surface, &dst)
+
+            minx : c.int = 0
+            maxx : c.int = 0
+            miny : c.int = 0
+            maxy : c.int = 0
+            advance : c.int = 0
+            metrics := ttf.GlyphMetrics(f, u16(ch), &minx, &maxx, &miny, &maxy, &advance)
+
+            state.data_font.glyphs[ch] = Glyph {
+                src         = dst,
+                advance     = advance,
+                bearing_x   = minx,
+                bearing_y   = maxy
+            }
+
+            x += gs.w + 1
+            if gs.h > rowHeight {
+                rowHeight = gs.h
+            }
+
+        }
+        
+        state.data_font.texture = sdl.CreateTextureFromSurface(state.renderer, surface)
+        sdl.SetTextureBlendMode(state.data_font.texture, .BLEND)
+    }
+}
+
+@private
+get_text_width :: proc(f: mu.Font, str: string) -> i32 
+{
+    width : i32 = 0
+    for ch in str do if ch&0xc0 != 0x80 {
+        r := min(int(ch), 127)
+        g := state.data_font.glyphs[r]
+        width += g.advance
+    }
+    return width
+}
+
+@private
+get_text_height :: proc(font: mu.Font) -> i32 
+{
+    return state.data_font.ascent - state.data_font.descent
 }
 
 get_ctx :: proc() -> ^mu.Context 
@@ -78,8 +185,8 @@ init :: proc (width: int, height: int)
 
     /* init microui */
     mu.init(&mu_ctx)
-    mu_ctx.text_width = mu.default_atlas_text_width
-    mu_ctx.text_height = mu.default_atlas_text_height
+    mu_ctx.text_width = get_text_width
+    mu_ctx.text_height = get_text_height
 }
 
 draw :: proc (draw_screen: proc(ctx: ^mu.Context))
@@ -135,25 +242,17 @@ draw :: proc (draw_screen: proc(ctx: ^mu.Context))
             case .BACKSPACE: fn(ctx, .BACKSPACE)
             }
         }
-
-        state.updateScreen = true
     }
 
-    if state.updateScreen {
-        // Draw
-        mu.begin(ctx)
-        {
-            draw_screen(ctx)
-        }
-        mu.end(ctx)
-
-        // render
-        render()
+    // Draw
+    mu.begin(ctx)
+    {
+        draw_screen(ctx)
     }
+    mu.end(ctx)
 
-    state.updateScreen = false
-
-    time.sleep(1000 / TARGET_FPS)
+    // render
+    render()
 }
 
 forward_input :: proc(forward: bool)
@@ -176,19 +275,26 @@ window_should_close :: proc () -> bool
     return state.should_close
 }
 
+event_pending :: proc() -> bool
+{
+    return bool(sdl.PollEvent(nil))
+}
+
+@private
+render_texture :: proc(renderer: ^sdl.Renderer, dst: ^sdl.Rect, src: mu.Rect, color: mu.Color) 
+{
+    dst.w = src.w
+    dst.h = src.h
+
+    sdl.SetTextureAlphaMod(state.atlas_texture, color.a)
+    sdl.SetTextureColorMod(state.atlas_texture, color.r, color.g, color.b)
+    sdl.RenderCopy(renderer, state.atlas_texture, &sdl.Rect{src.x, src.y, src.w, src.h}, dst)
+}
+
 @private
 render :: proc() 
 {
     ctx := &mu_ctx
-	render_texture :: proc(renderer: ^sdl.Renderer, dst: ^sdl.Rect, src: mu.Rect, color: mu.Color) {
-		dst.w = src.w
-		dst.h = src.h
-
-		sdl.SetTextureAlphaMod(state.atlas_texture, color.a)
-		sdl.SetTextureColorMod(state.atlas_texture, color.r, color.g, color.b)
-		sdl.RenderCopy(renderer, state.atlas_texture, &sdl.Rect{src.x, src.y, src.w, src.h}, dst)
-	}
-
 	viewport_rect := &sdl.Rect{}
 	sdl.GetRendererOutputSize(state.renderer, &viewport_rect.w, &viewport_rect.h)
 	sdl.RenderSetViewport(state.renderer, viewport_rect)
@@ -200,12 +306,20 @@ render :: proc()
 	for variant in mu.next_command_iterator(ctx, &command_backing) {
 		switch cmd in variant {
 		case ^mu.Command_Text:
-			dst := sdl.Rect{cmd.pos.x, cmd.pos.y, 0, 0}
+            color := cmd.color
+            sdl.SetTextureAlphaMod(state.atlas_texture, color.a)
+            sdl.SetTextureColorMod(state.atlas_texture, color.r, color.g, color.b)
+            penX := cmd.pos.x 
+            penY := cmd.pos.y
+
 			for ch in cmd.str do if ch&0xc0 != 0x80 {
 				r := min(int(ch), 127)
-				src := mu.default_atlas[mu.DEFAULT_ATLAS_FONT + r]
-				render_texture(state.renderer, &dst, src, cmd.color)
-				dst.x += dst.w
+				g := state.data_font.glyphs[r]
+
+                dst := sdl.Rect {penX, penY, g.src.w, g.src.h}
+
+                sdl.RenderCopy(state.renderer, state.data_font.texture, &g.src, &dst)
+				penX += g.advance	
 			}
 		case ^mu.Command_Rect:
 			sdl.SetRenderDrawColor(state.renderer, cmd.color.r, cmd.color.g, cmd.color.b, cmd.color.a)
@@ -289,6 +403,11 @@ r_init :: proc(width: int, height: int)
         log.error("Unable to update texture: ", sdl.GetError())
 		return
 	}
+
+    if ttf.Init() != 0 {
+        log.error("Failed to initialize TTF: ", ttf.GetError())
+        return
+    }
 }
 
 

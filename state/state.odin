@@ -58,6 +58,22 @@ data_buffer_size :: proc() -> int {
     return rb.length(state.dataBuffer)
 }
 
+read_new_data :: proc() -> (new_data: bool) {
+    if port_is_open() {
+        b := [1]u8{}
+        ok := false
+        for {
+            if b[0], ok = serial.read(state.port); !ok {
+                break
+            }
+            new_data = true
+            ev.signal(&pe.dataReceivedEvent, b[:])
+        }
+    }
+
+    return
+}
+
 init :: proc()
 {
 when configuration.LOCAL_TEST {
@@ -122,19 +138,6 @@ when configuration.LOCAL_TEST {
         else {
             log.debug("Closing port")
             serial.close_port(&state.port)
-        }
-    })
-
-    ev.listen(&pe.frameUpdateEvent, proc() {
-        if port_is_open() {
-            b := [1]u8{}
-            ok := false
-            for {
-                if b[0], ok = serial.read(state.port); !ok {
-                    break
-                }
-                ev.signal(&pe.dataReceivedEvent, b[:])
-            }
         }
     })
 

@@ -57,7 +57,8 @@ draw_settings :: proc(ctx: ^mu.Context)
     state := s.get_state()
 
     // Refresh
-    if .SUBMIT in mu.button(ctx, "Refresh Ports") {
+    mu.layout_row(ctx, {100}, 20)
+    if .SUBMIT in mu.button(ctx, "Refresh") {
         ev.signal(&ue.refreshPortsEvent)
     }
     if .ACTIVE in mu.header(ctx, "Ports") {
@@ -75,17 +76,18 @@ draw_settings :: proc(ctx: ^mu.Context)
             fmt.bprintf(friendly_name[:], "%s (%s)", port.port_name, port.info.product[:])
             if .ACTIVE in mu.treenode(ctx, string(friendly_name[:])) {
                 if .SUBMIT in mu.button(ctx, "Select") {
-                    tmp_settings_.selectedPort = port.port_name
+                    tmp_settings_.selectedPort = string(port.port_name[:])
                 }
                 infos := [?]struct {title: string, value: string}{
                     {"Manufacturer: ", cast(string)port.info.manufacturer[:]},
                     {"Product: ", cast(string)port.info.product[:]},
                     {"VID/PID: ", cast(string)port.info.id[:]},
                     {"Driver: ", cast(string)port.info.driver[:]},
-                    {"USB Model: ", cast(string)port.info.usb_model[:]},
+                    {"Serial Number: ", cast(string)port.info.serialnum[:]},
+                    {"Revision: ", cast(string)port.info.revision[:]}
                 }
                 for info in infos {
-                    mu.layout_row(ctx, {80, -1})
+                    mu.layout_row(ctx, {200, -1})
                     mu.label(ctx, info.title)
                     mu.label(ctx, info.value)
                 }
@@ -101,12 +103,12 @@ draw_settings :: proc(ctx: ^mu.Context)
         tmp_settings_.baudrateParsed, tmp_settings_.baudrateIsValid = strconv.parse_int(transmute(string)tmp_settings_.baudrate[:tmp_settings_.baudrateLen])
     }
 
-    mu.layout_row(ctx, {80, -1}, 8)
+    mu.layout_row(ctx, {80, -1}, 24)
     mu.label(ctx, "Stop Bits")
     mu.slider(ctx, &tmp_settings_.stopBits, 0, 2, 1.0, "%.0f")
     
 
-    mu.layout_row(ctx, {80, -1}, 8)
+    mu.layout_row(ctx, {80, -1}, 24)
     mu.label(ctx, "Parity")
     parity(ctx, &tmp_settings_.parity)
 
