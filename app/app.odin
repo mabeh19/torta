@@ -24,6 +24,8 @@ run :: proc()
     storage.init()
     defer storage.cleanup()
 
+    configuration.init()
+
     log_level := runtime.Logger_Level.Debug when ODIN_DEBUG else runtime.Logger_Level.Info
     logfile, err := create_log_file()
     if err != nil {
@@ -38,31 +40,19 @@ run :: proc()
     state.init()
     view.init()
 
-when configuration.LOCAL_TEST {
-    thread.create_and_start(proc() {
-        iter := 0
-        for {
-            str : string = "this is a very long line of text that will surely cause a line break and fill a lot\n"
-            msg := fmt.aprintf("[%v] %v", iter, str)
-            defer delete(msg)
-            ev.signal(&pe.dataReceivedEvent, transmute([]u8)msg)
-
-            iter += 1
-            time.sleep(20 * time.Millisecond)
-        }
-    })
-}
-
     for !view.should_close() {
         update := false
         update ||= state.read_new_data()
         update ||= view.event_pending()
 
-        if update {
-            backend.draw(view.draw)
+        // Update twice juuuust in case
+        for i in 0 ..< 2 {
+            if update {
+                backend.draw(view.draw)
+            }
+                
+            time.sleep(1000 / TARGET_FPS * time.Millisecond)
         }
-            
-        time.sleep(1000 / TARGET_FPS * time.Millisecond)
     }
 
     view.close()

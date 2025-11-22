@@ -151,6 +151,11 @@ get_text_height :: proc(font: mu.Font) -> i32
     return state.data_font.ascent - state.data_font.descent
 }
 
+font_height :: proc() -> i32
+{
+    return get_text_height(nil)
+}
+
 get_ctx :: proc() -> ^mu.Context 
 {
     return &mu_ctx
@@ -219,7 +224,8 @@ draw :: proc (draw_screen: proc(ctx: ^mu.Context))
             }
 
         case .KEYDOWN, .KEYUP: 
-            if e.type == .KEYUP && e.key.keysym.sym == .ESCAPE {
+            ctrl := sdl.Keymod { .LCTRL, .RCTRL }
+            if e.type == .KEYUP && e.key.keysym.sym == .W && ctrl & e.key.keysym.mod != {} {
                 sdl.PushEvent(&sdl.Event{type = .QUIT})
             }
 

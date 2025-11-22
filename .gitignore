@@ -10,3 +10,4 @@ torta
 *.pdb
 release
 .log
+fake_terminal.sh

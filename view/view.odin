@@ -11,6 +11,8 @@ import "core:log"
 import "core:bytes"
 import "core:sync"
 import "core:mem/virtual"
+import "core:unicode"
+import "core:time"
 
 import ue "../user_events"
 import pe "../process_events"
@@ -30,6 +32,12 @@ EXPORT_NAMESPACE :: "view_"
 SCREEN_WIDTH    :: 640
 SCREEN_HEIGHT   :: 480
 
+DisplaySetting :: enum {
+    Auto_Scroll,
+    Show_Times
+}
+
+DisplaySettings :: bit_set[DisplaySetting]
 
 ViewState :: struct {
     frame_memory: virtual.Arena,
@@ -38,7 +46,7 @@ ViewState :: struct {
     font_spacing: f32,
     font_line_spacing: f32,
     in_settings: bool,
-    auto_scroll: bool,
+    display_settings: DisplaySettings,
 
     data: struct {
         lines: u32,
@@ -138,7 +146,9 @@ draw :: proc (ctx: ^mu.Context)
 
                 // Autoscroll
                 mu.layout_row(ctx, {-1}, 20)
-                mu.checkbox(ctx, "Autoscroll", &view_state_.auto_scroll)
+                @static autoscroll := false
+                mu.checkbox(ctx, "Autoscroll", &autoscroll)
+                update_viewsettings(.Auto_Scroll, autoscroll)
 
                 // Text settings
                 mu.layout_row(ctx, {-1}, 20)
@@ -205,17 +215,59 @@ draw_data_view :: proc(ctx: ^mu.Context)
     mu.begin_panel(ctx, "Data window")
     panel := mu.get_current_container(ctx)
     mu.layout_row(ctx, {-1}, -1)
-    {
-        if state.bytesRead > 0 {
-            mu.text(ctx, transmute(string)state.dataBuffer.data[:])
-        }
-        else {
-            mu.text(ctx, "No data received yet")
-        }
+    if state.bytes_read > 0 {
+        switch data in state.data {
+        case s.Lines:
+            total_lines := len(data)
+            line_height := backend.font_height()
+            visible_lines := int(panel.rect.h / (line_height + ctx.style.padding)) + 2            
+            content_height := (line_height + ctx.style.padding) * i32(total_lines)
+            panel.content_size.y =  content_height
+            scroll_pct := f32(panel.scroll.y) / (f32(panel.content_size.y) - f32(panel.rect.h))
+            line := int(scroll_pct * f32(total_lines))
+            if line > total_lines - visible_lines {
+                line = total_lines - visible_lines
+            }
+            if line < 0 {
+                line = 0
+            }
+
+            d := data[line:min(line + visible_lines, len(data))]
+
+            offset := panel.scroll.y
+            if offset > line_height {
+                mu.layout_row(ctx, {-1}, offset)
+                mu.text(ctx, "start filler")
+            }
+            mu.layout_row(ctx, {-1}, panel.body.h)
+            mu.layout_begin_column(ctx)
+            for l in d {
+                if len(l.data) == 0 {
+                    continue
+                }
+                buf: [time.MIN_HMS_LEN]u8 
+                mu.layout_row(ctx, {-1}, line_height)
+                labelf(ctx, "%s %s", time.time_to_string_hms(l.timestamp, buf[:]), string(l.data[:]))
+            }
+            mu.layout_end_column(ctx)
+            mu.layout_row(ctx, {-1}, -1)
+            mu.end_panel(ctx)
+
+            panel.content_size.y = content_height
+
+        case s.RawData:
+            // Just print the whole buffer for raw data
+            mu.text(ctx, string(data[:]))
+            mu.end_panel(ctx)
+        }        
     }
-    mu.end_panel(ctx)
+    else {
+        mu.text(ctx, "No data received yet")
+        mu.end_panel(ctx)
+    }
+
     
-    if view_state_.auto_scroll {
+    if .Auto_Scroll in view_state_.display_settings {
         panel.scroll.y = panel.content_size.y
     }
 }
@@ -307,12 +359,7 @@ draw_port_info :: proc(ctx: ^mu.Context)
         return
     }
 
-    parity := "N"
-    switch Parity(state.portSettings.parity) {
-    case .None: parity = "N"
-    case .Even: parity = "E"
-    case .Odd:  parity = "O"
-    }
+    parity := unicode.to_upper(rune(state.portSettings.parity))
     labelf(ctx, "%v - %v %v%v%v", state.portSettings.port, state.portSettings.baudrate, 8, parity, state.portSettings.stopBits)
 }
     
@@ -340,3 +387,13 @@ register_event_handlers :: proc()
     })
 }
 
+@(private)
+update_viewsettings :: proc(setting: DisplaySetting, on: bool)
+{
+    if on {
+        view_state_.display_settings += { setting }
+    }
+    else {
+        view_state_.display_settings -= { setting }
+    }
+}

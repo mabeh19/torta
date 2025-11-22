@@ -13,17 +13,30 @@ import "core:log"
 import "core:thread"
 import "core:os"
 import "core:io"
-import "core:sync"
+import "core:slice"
+import "core:time"
+import "core:strings"
 import mem "core:mem/virtual"
+
+Line :: struct {
+    data: [dynamic]u8,
+    timestamp: time.Time
+}
+
+Lines :: distinct [dynamic]Line
+RawData :: distinct [dynamic]u8
 
 State :: struct {
     // Base
     arena: mem.Arena,
 
     // Data
-    dataBufferLock: sync.Mutex,
-    dataBuffer: rb.RingBuffer(u8),
-    bytesRead: int,
+    data: union #no_nil {
+        Lines,
+        RawData,
+    },
+    bytes_read: int,
+    dataAllocator: mem.Arena, // dedicated arena for serial data
 
     // Options
     echo: bool,
@@ -35,13 +48,13 @@ State :: struct {
     // File IO
     tracing: bool,
     traceWriter: io.Writer,
+    traceListener: ev.EventSub([]u8),
 
     // Port
     selectedPort: string,
     port: serial.Port,
     portSettings: serial.PortSettings,
     ports: []internal.SerialPort,
-    reader: ^thread.Thread,
 }
 
 state := State {
@@ -54,8 +67,14 @@ port_is_open :: proc() -> bool {
     return serial.is_open(state.port)
 }
 
-data_buffer_size :: proc() -> int {
-    return rb.length(state.dataBuffer)
+data_buffer_size :: proc() -> (l: int) {
+    switch d in state.data {
+    case Lines:
+        l = len(d)
+    case RawData:
+        l = len(d)
+    }
+    return
 }
 
 read_new_data :: proc() -> (new_data: bool) {
@@ -76,43 +95,64 @@ read_new_data :: proc() -> (new_data: bool) {
 
 init :: proc()
 {
-when configuration.LOCAL_TEST {
-    @static test_data := []internal.SerialPort {
-        { port_name = "port1",  info = {} },
-        { port_name = "port2",  info = {} },
-        { port_name = "port3",  info = {} },
-        { port_name = "port4",  info = {} },
-        { port_name = "port5",  info = {} },
-        { port_name = "port6",  info = {} },
-        { port_name = "port7",  info = {} },
-        { port_name = "port8",  info = {} },
-        { port_name = "port9",  info = {} },
-        { port_name = "port10", info = {} },
-        { port_name = "port11", info = {} },
-    }
-    state.ports = test_data[:]
-}
-
     _ = mem.arena_init_growing(&state.arena)
     context.allocator = mem.arena_allocator(&state.arena)
 
+    _ = mem.arena_init_growing(&state.dataAllocator)
+
     config := &configuration.config
-    state.dataBuffer = rb.new(config.historyLength, u8, config.infiniteHistory)
+    state.data = make(Lines)
 
     ev.listen(&ue.clearEvent, proc() {
-        rb.clear(&state.dataBuffer)
-        state.bytesRead = 0
+        switch &d in state.data {
+        case Lines:
+            clear(&d)
+        case RawData:
+            clear(&d)
+        }
+        mem.arena_free_all(&state.dataAllocator)
     })
 
     ev.listen(&pe.dataReceivedEvent, proc(data: []u8) {
-        log.debug("Data received: ", data)
+        context.allocator = mem.arena_allocator(&state.dataAllocator)
+        state.bytes_read += len(data)
 
-        {
-            sync.lock(&state.dataBufferLock)
-            defer sync.unlock(&state.dataBufferLock)
-            rb.push(&state.dataBuffer, data)
+        switch &d in state.data {
+        case Lines:
+            lines, err := strings.split(string(data), "\n")
+            defer delete(lines)
+            if err != nil {
+                break
+            }
+
+            // append first line to the end of the last line
+            if len(d) == 0 {
+                line := Line {
+                    data = make([dynamic]u8),
+                    timestamp = time.now()
+                }
+                append(&line.data, lines[0])
+                append(&d, line)
+            }
+            else {
+                append(&d[len(d)-1].data, lines[0])
+            }
+
+            if len(lines) == 1 {
+                break
+            }
+
+            for l in lines[1:] {
+                line := Line {
+                    data = make([dynamic]u8),
+                    timestamp = time.now()
+                }
+                append(&line.data, l)
+                append(&d, line)
+            }
+        case RawData:
+            append(&d, ..data)
         }
-        state.bytesRead += len(data)
     })
 
     ev.listen(&ue.settingsChanged, proc(settings: serial.PortSettings) {
@@ -203,6 +243,7 @@ when configuration.LOCAL_TEST {
                 return
             }
             else {
+                context.allocator = mem.arena_allocator(&state.arena)
                 state.traceWriter = os.stream_from_handle(file)
                 state.tracing = true
 
@@ -233,6 +274,7 @@ when configuration.LOCAL_TEST {
 cleanup :: proc()
 {
     mem.arena_destroy(&state.arena)
+    mem.arena_destroy(&state.dataAllocator)
 }
 
 get_state :: proc() -> ^State 

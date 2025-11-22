@@ -44,9 +44,7 @@ C_LIBS=$(C_SOURCES:%.c=%.$(LIB_EXT))
 %.$(LIB_EXT): %.$(OBJECT_EXT)
 	$(MAKE_LIB) $(MAKE_LIB_FLAGS)$@ $< 
 
-local: $(C_LIBs)
-	odin run . $(ODIN_DEBUG_FLAGS) -define:LOCAL_TEST=true
-
+phony: all
 
 all: $(C_LIBS)
 	odin build . $(ODIN_DEBUG_FLAGS)
@@ -60,6 +58,9 @@ release: $(C_LIBS)
 debug: all
 	gdb torta
 
+sim: all
+	sudo bash ./fake_terminal.sh
+
 dll:
 	odin build . -build-mode:dll
 	mv app.so ..
@@ -67,4 +68,3 @@ dll:
 test: all
 	odin test .
 
-phony: all

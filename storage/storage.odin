@@ -14,7 +14,7 @@ init :: proc()
 when ODIN_OS == .Linux {
     home := os.get_env("HOME")
     defer delete(home)
-    ROOT_DIR = fmt.aprintf("{}/.local/", home)
+    ROOT_DIR = fmt.aprintf("{}/.config/", home)
 }
 else when ODIN_OS == .Windows {
     homedrive := os.get_env("HOMEDRIVE")

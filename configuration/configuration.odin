@@ -6,6 +6,7 @@ import "core:encoding/json"
 import "core:path/filepath"
 import "core:log"
 import "core:time"
+import mem "core:mem/virtual"
 
 import "../serial"
 import "../storage"
@@ -45,22 +46,28 @@ DEFAULT_CONFIG := Configuration {
     },
 }
 
-ENCODING_OPTIONS := json.Marshal_Options {
+ENCODING_OPTIONS :: json.Marshal_Options {
     pretty = true,
     use_spaces = true,
 }
 
+config_allocator := mem.Arena{}
 config := Configuration{}
+
+init :: proc()
+{
+    err := mem.arena_init_growing(&config_allocator)
+}
 
 load :: proc()
 {
     config_path := storage.path({FILE_NAME})
     defer delete(config_path)
-    
+
     log.info("Loading configuration file", config_path)
     if data, ok := os.read_entire_file(config_path); ok {
         defer delete(data)
-        if err := json.unmarshal(data, &config); err != nil {
+        if err := json.unmarshal(data, &config, allocator = mem.arena_allocator(&config_allocator)); err != nil {
             log.error("Unable to parse configuration file:", err)
         }
         else {
@@ -99,6 +106,5 @@ save :: proc()
 
 cleanup :: proc()
 {
-    delete(config.renderer)
-    delete(config.defaultPortSettings.port)
+    mem.arena_destroy(&config_allocator)
 }
