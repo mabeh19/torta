@@ -100,7 +100,7 @@ init :: proc()
 
     _ = mem.arena_init_growing(&state.dataAllocator)
 
-    config := &configuration.config
+    state.portSettings = configuration.config.defaultPortSettings
     state.data = make(Lines)
 
     ev.listen(&ue.clearEvent, proc() {
@@ -161,6 +161,8 @@ init :: proc()
             ev.signal(&ue.openEvent, false)
         }
         state.portSettings = settings
+
+        try_autoconnect()
     })
 
     ev.listen(&ue.openEvent, proc(open: bool) {
@@ -266,13 +268,16 @@ init :: proc()
         }
     })
 
-
     // Load ports at startup
     ev.signal(&ue.refreshPortsEvent)
 }
 
 cleanup :: proc()
 {
+    if configuration.config.saveLatestPortSettings {
+        configuration.config.defaultPortSettings = state.portSettings
+        configuration.save()
+    }
     mem.arena_destroy(&state.arena)
     mem.arena_destroy(&state.dataAllocator)
 }
@@ -280,4 +285,14 @@ cleanup :: proc()
 get_state :: proc() -> ^State 
 {
     return &state
+}
+
+@private
+try_autoconnect :: proc()
+{
+    for &port in state.ports {
+        if strings.string_from_null_terminated_ptr(raw_data(port.port_name[:]), len(port.port_name)) == configuration.config.defaultPortSettings.port {
+            ev.signal(&ue.openEvent, true)
+        }
+    }
 }

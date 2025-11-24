@@ -13,7 +13,7 @@ when ODIN_DEBUG {
     defer mem.tracking_allocator_destroy(&ta)
     context.allocator = mem.tracking_allocator(&ta)
 }
-    
+
     app.run()
 
 when ODIN_DEBUG {

@@ -25,8 +25,10 @@ Configuration :: struct {
     historyLength: int,
     infiniteHistory: bool,
     defaultPortSettings: serial.PortSettings,
+    saveLatestPortSettings: bool,
     renderer: cstring,
-    font: FontSettings
+    font: FontSettings,
+    fps: int,
 }
 
 DEFAULT_CONFIG := Configuration {
@@ -39,11 +41,13 @@ DEFAULT_CONFIG := Configuration {
         stopBits = 1,
         blocking = false,
     },
+    saveLatestPortSettings = true,
     renderer = "opengl",
     font = {
         name = "assets/fonts/default.ttf",
         size = 12,
     },
+    fps = 20
 }
 
 ENCODING_OPTIONS :: json.Marshal_Options {

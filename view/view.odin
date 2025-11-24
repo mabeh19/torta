@@ -115,14 +115,20 @@ draw :: proc (ctx: ^mu.Context)
                 defer mu.layout_end_column(ctx)
 
                 draw_port_info(ctx)
-                height : i32 = state.bufferedMode ? -40 : -1
+                height : i32 = state.bufferedMode ? -90 : -1
                 mu.layout_row(ctx, {-1}, height)
                 draw_data_view(ctx)
 
                 if state.bufferedMode {
-                    mu.layout_row(ctx, {-60, -1}, 40)
+                    mu.layout_row(ctx, {-90, -1}, 20)
                     draw_input_field(ctx)
                 }
+
+                mu.layout_row(ctx, {-1}, 10)
+                mu.layout_next(ctx)
+
+                // File I/O
+                draw_file_io(ctx)
             }
 
             // Column 2
@@ -146,9 +152,15 @@ draw :: proc (ctx: ^mu.Context)
 
                 // Autoscroll
                 mu.layout_row(ctx, {-1}, 20)
-                @static autoscroll := false
+                @static autoscroll := true
                 mu.checkbox(ctx, "Autoscroll", &autoscroll)
                 update_viewsettings(.Auto_Scroll, autoscroll)
+
+                // Show timestamps
+                mu.layout_row(ctx, {-1}, 20)
+                @static timestamps := true
+                mu.checkbox(ctx, "Timestamps", &timestamps)
+                update_viewsettings(.Show_Times, timestamps)
 
                 // Text settings
                 mu.layout_row(ctx, {-1}, 20)
@@ -164,9 +176,6 @@ draw :: proc (ctx: ^mu.Context)
                 if .CHANGE in mu.checkbox(ctx, "Buffered", &state.bufferedMode) {
                     backend.forward_input(!state.bufferedMode)
                 }
-
-                // File I/O
-                draw_file_io(ctx)
             }
         }
     }
@@ -247,7 +256,12 @@ draw_data_view :: proc(ctx: ^mu.Context)
                 }
                 buf: [time.MIN_HMS_LEN]u8 
                 mu.layout_row(ctx, {-1}, line_height)
-                labelf(ctx, "%s %s", time.time_to_string_hms(l.timestamp, buf[:]), string(l.data[:]))
+                if .Show_Times in view_state_.display_settings {
+                    labelf(ctx, "%s %s", time.time_to_string_hms(l.timestamp, buf[:]), string(l.data[:])) 
+                }
+                else {
+                    labelf(ctx, "%s", string(l.data[:]))
+                }
             }
             mu.layout_end_column(ctx)
             mu.layout_row(ctx, {-1}, -1)
@@ -307,17 +321,19 @@ draw_file_io :: proc(ctx: ^mu.Context)
 {
     state := s.get_state()
 
+    mu.layout_row(ctx, {-1}, 40)
+    mu.layout_begin_column(ctx)
+    defer mu.layout_end_column(ctx)
+
     // Send file
     {
         @static filepath := [1024]u8{}
         @static filepath_len := 0
 
-        mu.layout_begin_column(ctx)
-        defer mu.layout_end_column(ctx)
-        mu.layout_row(ctx, {-1}, 20)
+        mu.layout_row(ctx, {80, -80, -1}, 20)
+        mu.label(ctx, "Send File")
         mu.textbox(ctx, filepath[:], &filepath_len)
-        mu.layout_row(ctx, {-1}, 20)
-        if .SUBMIT in mu.button(ctx, "Send file") {
+        if .SUBMIT in mu.button(ctx, "Send") {
             ev.signal(&ue.sendFile, transmute(string)filepath[:])
         }
     }
@@ -327,20 +343,17 @@ draw_file_io :: proc(ctx: ^mu.Context)
         @static filepath := [1024]u8{}
         @static filepath_len := 0
 
-        mu.layout_begin_column(ctx)
-        defer mu.layout_end_column(ctx)
-        mu.layout_row(ctx, {-1}, 20)
+        mu.layout_row(ctx, {80, -80, -40, -1}, 20)
+        mu.label(ctx, "Trace")
         mu.textbox(ctx, filepath[:], &filepath_len)
         disabled := mu.Options { .NO_INTERACT, .ALIGN_CENTER }
         enabled := mu.Options { .ALIGN_CENTER }
         start_opts := state.tracing ? disabled : enabled
         stop_opts  := state.tracing ? enabled : disabled
-        mu.layout_row(ctx, {-1}, 20)
         if .SUBMIT in mu.button(ctx, "Start", opt = start_opts) {
             ev.signal(&ue.startTrace, transmute(string)filepath[:])
             mu.set_focus(ctx, 0)
         }
-        mu.layout_row(ctx, {-1}, 20)
         if .SUBMIT in mu.button(ctx, "Stop", opt = stop_opts) {
             ev.signal(&ue.stopTrace)
             mu.set_focus(ctx, 0)

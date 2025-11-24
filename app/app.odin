@@ -17,8 +17,6 @@ import "core:os"
 import "core:strings"
 import "base:runtime"
 
-TARGET_FPS :: 20
-
 run :: proc()
 {
     storage.init()
@@ -40,6 +38,8 @@ run :: proc()
     state.init()
     view.init()
 
+    target_fps := configuration.config.fps
+
     for !view.should_close() {
         update := false
         update ||= state.read_new_data()
@@ -50,8 +50,8 @@ run :: proc()
             if update {
                 backend.draw(view.draw)
             }
-                
-            time.sleep(1000 / TARGET_FPS * time.Millisecond)
+
+            time.sleep(1000 / time.Duration(target_fps) * time.Millisecond)
         }
     }
 
