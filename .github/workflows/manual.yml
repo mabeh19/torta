@@ -57,6 +57,8 @@ jobs:
       run: |
         mkdir torta-win64
         cp C:\Users\runneradmin\odin\vendor\sdl2\SDL2.dll torta-win64
+        cp C:\Users\runneradmin\odin\vendor\sdl2\SDL2_ttf.dll torta-win64
+        cp assets torta-win64
         cp torta.exe torta-win64
 
     - name: publish binary for release
@@ -90,12 +92,18 @@ jobs:
 
     - name: build app
       run: make release
-      
+
+    - name: setup release folder
+      run: |
+        mkdir torta-linux64
+        cp assets torta-linux64
+        cp torta.exe torta-linux64
+
     - name: publish binary for release
       uses: actions/upload-artifact@v4
       with:
         name: torta-linux64
-        path: torta
+        path: torta-linux64
 
   create-release:
     needs: [build-windows, build-linux]
