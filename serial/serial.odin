@@ -85,11 +85,14 @@ is_open :: proc(port: Port) -> bool
     return ok
 }
 
-send :: proc(port: Port, data: []u8)
+send :: proc(port: Port, data: []u8) -> (ok: bool)
 {
-    if fd, ok := port.file.?; ok {
-        os.write(fd, data)
+    if fd, exists := port.file.?; exists {
+        _, err := os.write(fd, data)
+        ok = err == nil
     }
+
+    return
 }
 
 read :: proc(port: Port) -> (data: u8, ok: bool)

@@ -156,6 +156,11 @@ font_height :: proc() -> i32
     return get_text_height(nil)
 }
 
+text_width :: proc(str: string) -> i32
+{
+    return get_text_width(nil, str)
+}
+
 get_ctx :: proc() -> ^mu.Context 
 {
     return &mu_ctx

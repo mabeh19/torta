@@ -18,6 +18,7 @@ import ue "../user_events"
 import pe "../process_events"
 import s "../state"
 import conf "../configuration"
+import "../errors"
 
 import rb "../ringbuffer"
 import ev "../event"
@@ -47,6 +48,7 @@ ViewState :: struct {
     font_line_spacing: f32,
     in_settings: bool,
     display_settings: DisplaySettings,
+    error_message: string,
 
     data: struct {
         lines: u32,
@@ -71,6 +73,18 @@ init :: proc ()
         conf.config.font = conf.DEFAULT_CONFIG.font
     }
     backend.set_data_font(conf.config.font.name, conf.config.font.size)
+
+    clear_error_message()
+}
+
+set_error_message :: proc(msg: string)
+{
+    view_state_.error_message = msg
+}
+
+clear_error_message :: proc()
+{
+    view_state_.error_message = ""
 }
 
 labelf :: proc(ctx: ^mu.Context, f: string, args: ..any)
@@ -104,7 +118,17 @@ draw :: proc (ctx: ^mu.Context)
         win := mu.get_current_container(ctx)
         win.rect = {0, 0, width, height}
 
-        if view_state_.in_settings {
+        if view_state_.error_message != "" {
+            mu.layout_row(ctx, {-1}, -40)
+            mu.text(ctx, view_state_.error_message)
+
+            mu.layout_row(ctx, {-1}, 40)
+            if .SUBMIT in mu.button(ctx, "OK") {
+                clear_error_message()
+            }
+            
+        }
+        else if view_state_.in_settings {
             draw_settings(ctx)
         }
         else {
@@ -242,6 +266,20 @@ draw_data_view :: proc(ctx: ^mu.Context)
             }
 
             d := data[line:min(line + visible_lines, len(data))]
+
+            // compute maximum line width across all lines so panel can be
+            // horizontally scrollable (set content_size.x)
+            max_w : i32 = 0
+            for l_all in data {
+                if len(l_all.data) == 0 {
+                    continue
+                }
+                w := backend.text_width(string(l_all.data[:]))
+                if w > max_w { max_w = w }
+            }
+
+            // add a little padding to content width
+            panel.content_size.x = max_w + ctx.style.padding * 2
 
             offset := panel.scroll.y
             if offset > line_height {
@@ -397,6 +435,14 @@ register_event_handlers :: proc()
     @static dataReceivedListener : ev.EventSub([]u8)
     ev.listen(&pe.dataReceivedEvent, &dataReceivedListener, proc (data: []u8) {
         backend.push_frame_update_event()
+    })
+    
+    @static errorOccurredListener : ev.EventSub(errors.Error)
+    ev.listen(&errors.raised, &errorOccurredListener, proc (err: errors.Error) {
+        switch err {
+        case .CONFIG_LOAD_ERROR:
+            set_error_message("Failed to load configuration file, please check your config file")
+        }
     })
 }
 

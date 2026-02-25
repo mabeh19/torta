@@ -4,6 +4,7 @@ import "../view"
 import "../state"
 import "../configuration"
 import "../storage"
+import "../errors"
 import backend "../view/backends/microui"
 
 import ev "../event"
@@ -30,13 +31,17 @@ run :: proc()
         log.errorf("Unable to open log file %v", err)
         return
     }
-    defer os.close(logfile)
     logger := log.create_file_logger(logfile, log_level)
     context.logger = logger
     defer log.destroy_file_logger(logger)
-    configuration.load()
+    
+    load_success := configuration.load()
     state.init()
     view.init()
+
+    if !load_success {
+        errors.raise(.CONFIG_LOAD_ERROR)
+    }
 
     target_fps := configuration.config.fps
 

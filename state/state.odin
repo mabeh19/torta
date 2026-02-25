@@ -8,6 +8,7 @@ import rb "../ringbuffer"
 import "../serial"
 import "../internal"
 import "../configuration"
+import "../errors"
 
 import "core:log"
 import "core:thread"
@@ -186,17 +187,24 @@ init :: proc()
     ev.listen(&ue.sendEvent, proc(data: []u8) {
         send :: proc(data: []u8) {
             log.debugf("Pushing %v bytes: %v", len(data), data)
+            
+            if !serial.send(state.port, data) {
+                return
+            }
             if state.echo {
                 ev.signal(&pe.dataReceivedEvent, data)
             }
-            serial.send(state.port, data)
         }
         send_byte :: proc(data: u8) {
             log.debugf("Pushing byte: %v", data)
+            
+            if !serial.send(state.port, {data}) {
+                return
+            }
+
             if state.echo {
                 ev.signal(&pe.dataReceivedEvent, []u8{data})
             }
-            serial.send(state.port, {data})
         }
 
         send(data)
@@ -274,7 +282,7 @@ init :: proc()
 
 cleanup :: proc()
 {
-    if configuration.config.saveLatestPortSettings {
+    if !errors.is_raised(.CONFIG_LOAD_ERROR) && configuration.config.saveLatestPortSettings {
         configuration.config.defaultPortSettings = state.portSettings
         configuration.save()
     }
