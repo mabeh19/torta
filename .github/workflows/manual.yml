@@ -126,16 +126,16 @@ jobs:
 
     - name: List artifacts
       run: |
-        ls -r torta-win64
-        ls -r torta-linux64
+        ls -r torta-win64-${{ inputs.tag }}
+        ls -r torta-linux64-${{ inputs.tag }}
 
     - name: Zip Windows Release
       run: |
-        zip -r torta-win64.zip torta-win64
+        zip -r torta-win64-${{ inputs.tag }}.zip torta-win64-${{ inputs.tag }}
 
     - name: Zip Linux Release
       run: |
-        tar -czvf torta-linux64.tar.gz -C torta-linux64 .
+        tar -czvf torta-linux64-${{ inputs.tag }}.tar.gz -C torta-linux64-${{ inputs.tag }} .
         
     - name: Upload Windows Release
       id: upload-windows-release-asset 
@@ -144,8 +144,8 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: torta-win64.zip
-        asset_name: torta-win64.zip
+        asset_path: torta-win64-${{ inputs.tag }}.zip
+        asset_name: torta-win64-${{ inputs.tag }}.zip
         asset_content_type: application/zip
         
     - name: Upload Linux Release
@@ -155,6 +155,6 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }}
-        asset_path: torta-linux64.tar.gz
-        asset_name: torta-linux64.tar.gz
+        asset_path: torta-linux64-${{ inputs.tag }}.tar.gz
+        asset_name: torta-linux64-${{ inputs.tag }}.tar.gz
         asset_content_type: application/gzip
