@@ -90,13 +90,20 @@ load :: proc()
     font_fullpath := ""
     exe_path := filepath.dir(os.args[0])
     defer delete(exe_path)
+
+    abs_path, abs_path_ok := filepath.abs(exe_path)
+    if !abs_path_ok {
+        log.error("Unable to resolve absolute path of executable, using current directory as fallback")
+        abs_path = strings.clone(exe_path)
+    }
+    defer delete(abs_path)
     
     when ODIN_OS == .Windows {
-        font_fullpath = fmt.aprintf("%v\\%v\\%v", current_dir, exe_path, "assets\\fonts\\default.ttf")
+        font_fullpath = fmt.aprintf("%v\\%v", abs_path, "assets\\fonts\\default.ttf")
         defer delete(font_fullpath)
     }
     else when ODIN_OS == .Linux {
-        font_fullpath = fmt.aprintf("%v/%v/%v", current_dir, exe_path, "assets/fonts/default.ttf")
+        font_fullpath = fmt.aprintf("%v/%v", abs_path, "assets/fonts/default.ttf")
         defer delete(font_fullpath)
     }
     

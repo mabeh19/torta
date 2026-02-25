@@ -20,12 +20,15 @@ ifeq ($(OS),Windows_NT)
 	CC=cl
 	COMPILER_FLAGS=-TC -c
 	COMPILER_OUTPUT_SPECIFIER=/Fo:
-	COMPILER_END_FLAGS=/link setupapi.lib 
+	COMPILER_END_FLAGS=/link setupapi.lib /SUBSYSTEM:WINDOWS
 	MAKE_LIB=lib
 	MAKE_LIB_FLAGS=-nologo -out:
 	RM=del
 	OBJECT_EXT=obj
 	LIB_EXT=lib
+	# ensure Odin builds a GUI subsystem to suppress console window
+	ODIN_DEBUG_FLAGS += -subsystem:windows
+	ODIN_RELEASE_FLAGS += -subsystem:windows
 else
 	UNAME_S=$(shell uname -s)
 	C_SOURCES += $(LINUX_C_SOURCES)
