@@ -267,20 +267,6 @@ draw_data_view :: proc(ctx: ^mu.Context)
 
             d := data[line:min(line + visible_lines, len(data))]
 
-            // compute maximum line width across all lines so panel can be
-            // horizontally scrollable (set content_size.x)
-            max_w : i32 = 0
-            for l_all in data {
-                if len(l_all.data) == 0 {
-                    continue
-                }
-                w := backend.text_width(string(l_all.data[:]))
-                if w > max_w { max_w = w }
-            }
-
-            // add a little padding to content width
-            panel.content_size.x = max_w + ctx.style.padding * 2
-
             offset := panel.scroll.y
             if offset > line_height {
                 mu.layout_row(ctx, {-1}, offset)
@@ -293,13 +279,17 @@ draw_data_view :: proc(ctx: ^mu.Context)
                     continue
                 }
                 buf: [time.MIN_HMS_LEN]u8 
-                mu.layout_row(ctx, {-1}, line_height)
+                
+                lstr := ""
                 if .Show_Times in view_state_.display_settings {
-                    labelf(ctx, "%s %s", time.time_to_string_hms(l.timestamp, buf[:]), string(l.data[:])) 
+                    lstr = fmt.aprintf("%s %s", time.time_to_string_hms(l.timestamp, buf[:]), string(l.data[:]), allocator = context.temp_allocator)
                 }
                 else {
-                    labelf(ctx, "%s", string(l.data[:]))
+                    lstr = fmt.aprintf("%s", string(l.data[:]), allocator = context.temp_allocator)
                 }
+                content_width := backend.text_width(lstr) + ctx.style.padding * 2
+                mu.layout_row(ctx, {content_width}, line_height)
+                labelf(ctx, "%s", lstr)
             }
             mu.layout_end_column(ctx)
             mu.layout_row(ctx, {-1}, -1)

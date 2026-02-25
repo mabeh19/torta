@@ -1,7 +1,7 @@
 LINUX_C_SOURCES=serial/serial_linux_backend.c
 WINDOWS_C_SOURCES=serial\\serial_windows_backend.c
 C_SOURCES=
-ODIN_DEBUG_FLAGS=-debug # -sanitize:address
+ODIN_DEBUG_FLAGS=-debug -sanitize:address
 ODIN_RELEASE_FLAGS=-o:speed
 ODIN_LIBS=
 CC=gcc
