@@ -3,6 +3,7 @@ package serial
 import "core:c"
 import "core:strings"
 import "core:os"
+import "core:log"
 
 when ODIN_OS == .Linux {
 foreign import sl "serial_linux_backend.a"
@@ -14,9 +15,9 @@ foreign import sl "serial_windows_backend.lib"
 
 
 foreign sl {
-    OpenPort :: proc(cstring, ^PortSettingsInternal, ^os.Handle) -> bool ---
+    OpenPort :: proc(cstring, ^PortSettingsInternal, ^os.Handle, proc "c" (cstring)) -> bool ---
     ClosePort :: proc(fd: c.int) ---
-    Poll :: proc(fd: os.Handle) -> bool ---
+    Poll :: proc(fd: os.Handle) -> c.int ---
 }
 
 
@@ -59,7 +60,9 @@ open_port :: proc(settings: PortSettings) -> (port: Port, ok: bool)
     defer delete(cport)
 
     fd : os.Handle
-    ok = OpenPort(cport, &settings_internal, &fd)
+    ok = OpenPort(cport, &settings_internal, &fd, proc "c" (msg: cstring) {
+        
+    })
 
     if ok {
         port.file = fd
@@ -94,7 +97,11 @@ read :: proc(port: Port) -> (data: u8, ok: bool)
     b := [1]u8{}
 
     if fd, ok := port.file.?; ok {
-        if Poll(fd) {
+        res := Poll(fd)
+        if res == -1 {
+            // error while reading
+        }
+        else if res > 0 {
             if n, err := os.read(fd, b[:]); err == nil && n > 0 {
                 return b[0], true
             }

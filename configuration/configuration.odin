@@ -1,11 +1,13 @@
 package configuration
 
+import "core:path/slashpath"
 import "core:fmt"
 import "core:os"
 import "core:encoding/json"
 import "core:path/filepath"
 import "core:log"
 import "core:time"
+import "core:strings"
 import mem "core:mem/virtual"
 
 import "../serial"
@@ -44,7 +46,7 @@ DEFAULT_CONFIG := Configuration {
     saveLatestPortSettings = true,
     renderer = "opengl",
     font = {
-        name = "assets/fonts/default.ttf",
+        name = "",
         size = 12,
     },
     fps = 20
@@ -82,6 +84,23 @@ load :: proc()
     // no file exists, so we grab a default config
     log.warn("No configuration file found, using default configuration")
     config = DEFAULT_CONFIG
+    current_dir := os.get_current_directory()
+    defer delete(current_dir)
+
+    font_fullpath := ""
+    exe_path := filepath.dir(os.args[0])
+    defer delete(exe_path)
+    
+    when ODIN_OS == .Windows {
+        font_fullpath = fmt.aprintf("%v\\%v\\%v", current_dir, exe_path, "assets\\fonts\\default.ttf")
+        defer delete(font_fullpath)
+    }
+    else when ODIN_OS == .Linux {
+        font_fullpath = fmt.aprintf("%v/%v/%v", current_dir, exe_path, "assets/fonts/default.ttf")
+        defer delete(font_fullpath)
+    }
+    
+    config.font.name = strings.clone_to_cstring(font_fullpath)
 
     // Immediately save configuration to path
     save()
