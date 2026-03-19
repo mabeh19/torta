@@ -1,6 +1,6 @@
 
 # Torta
-Are you tired of everytime you open a serial terminal that you have to check externally which port is what? Well fret no longer! Torta is the sweet terminal to solve all your minordoc/ass inconviniences.
+Are you tired of everytime you open a serial terminal that you have to check externally which port is what? Well fret no longer! Torta is the sweet terminal to solve all your minor inconviniences.
 
 ![main screen](doc/assets/main.png)
 
