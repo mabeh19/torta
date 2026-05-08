@@ -52,7 +52,7 @@ State :: struct {
     traceListener: ev.EventSub([]u8),
 
     // Port
-    selectedPort: string,
+    selectedPort: internal.SerialPort,
     port: serial.Port,
     portSettings: serial.PortSettings,
     ports: []internal.SerialPort,
@@ -102,6 +102,7 @@ init :: proc()
     _ = mem.arena_init_growing(&state.dataAllocator)
 
     state.portSettings = configuration.config.defaultPortSettings
+    defer try_autoconnect()
     state.data = make(Lines)
 
     ev.listen(&ue.clearEvent, proc() {
@@ -158,6 +159,12 @@ init :: proc()
 
     ev.listen(&ue.settingsChanged, proc(settings: serial.PortSettings) {
         log.debugf("New settings: %v", settings)
+        for &port in state.ports {
+            pname := strings.string_from_null_terminated_ptr(raw_data(port.port_name[:]), len(port.port_name))
+            if pname == settings.port {
+                state.selectedPort = port
+            }
+        }
         if port_is_open() {
             ev.signal(&ue.openEvent, false)
         }
@@ -226,9 +233,9 @@ init :: proc()
     })
 
     ev.listen(&ue.sendFile, proc(fp: string) {
-        data, ok := os.read_entire_file(fp)
+        data, ok := os.read_entire_file(fp, allocator = context.allocator)
         log.debugf("Sending file %v .. %v", fp, ok)
-        if !ok { return }
+        if ok != nil { return }
         ev.signal(&ue.sendEvent, data)
     })
 
@@ -242,19 +249,13 @@ init :: proc()
         }
 
         ev.listen(&ue.startTrace, proc(fp: string) {
-            when ODIN_OS == .Linux {
-                accessFlags := os.S_IRUSR | os.S_IWUSR | os.S_IRGRP | os.S_IROTH
-            }
-            else when ODIN_OS == .Windows {
-                accessFlags := 0
-            }
-            if file, err := os.open(fp, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, accessFlags); err != nil {
+            if file, err := os.open(fp, os.O_WRONLY | os.O_CREATE | os.O_TRUNC, os.Permissions_Read_Write_All); err != nil {
                 log.errorf("Unable to open file (%v) for writing given path %v", err, fp)
                 return
             }
             else {
                 context.allocator = mem.arena_allocator(&state.arena)
-                state.traceWriter = os.stream_from_handle(file)
+                state.traceWriter = os.to_stream(file)
                 state.tracing = true
 
                 ev.listen(&pe.dataReceivedEvent, trace_data)
@@ -299,7 +300,10 @@ get_state :: proc() -> ^State
 try_autoconnect :: proc()
 {
     for &port in state.ports {
-        if strings.string_from_null_terminated_ptr(raw_data(port.port_name[:]), len(port.port_name)) == configuration.config.defaultPortSettings.port {
+        def_port_name := configuration.config.defaultPortSettings.port
+        port_name := strings.string_from_null_terminated_ptr(raw_data(port.port_name[:]), len(port.port_name))
+        default_port := strings.string_from_null_terminated_ptr(raw_data(def_port_name[:]), len(def_port_name))
+        if port_name == default_port {
             ev.signal(&ue.openEvent, true)
         }
     }

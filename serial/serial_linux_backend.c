@@ -1,5 +1,7 @@
+#define _GNU_SOURCE
 #include <errno.h>
 #include <stdint.h>
+#include <stdlib.h>
 #include <stdbool.h>
 #include <fcntl.h> 
 #include <termios.h>
@@ -123,12 +125,15 @@ struct PortSettings {
     bool controlflow;
 };
 
-int OpenPort(const char* portname, const struct PortSettings* settings, int* file)
+FILE* OpenPort(const char* portname, const struct PortSettings* settings, void (*log)(const char* msg))
 {
     int fd = open(portname, O_RDWR | O_NOCTTY | O_SYNC);
     if (fd < 0)
     {
-        error_message ("error %d opening %s: %s", errno, portname, strerror (errno));
+        char* str;
+        asprintf(&str, "error %d opening %s: %s", errno, portname, strerror (errno));
+        log(str);
+        free(str);
         return 0;
     }
 
@@ -139,23 +144,21 @@ int OpenPort(const char* portname, const struct PortSettings* settings, int* fil
     set_interface_attribs(fd, baudrate, settings->parity, settings->stopBits, settings->controlflow);
     set_blocking(fd, settings->blocking);                // set no blocking
 
-    *file = fd;
-
-    return 1;
+    return fdopen(fd, "w+b");
 }
 
-void ClosePort(int fd)
+void ClosePort(FILE* fd)
 {
-    close(fd);
+    close(fileno(fd));
 }
 
 #include <poll.h>
 
-bool Poll(int fd)
+bool Poll(FILE* fd)
 {
     struct pollfd pfds[] = {
         {
-            .fd = fd,
+            .fd = fileno(fd),
             .events = POLLIN,
             .revents = 0
         },

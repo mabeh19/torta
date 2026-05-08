@@ -32,8 +32,10 @@ run :: proc()
         return
     }
     logger := log.create_file_logger(logfile, log_level)
-    context.logger = logger
     defer log.destroy_file_logger(logger)
+    context.logger = logger
+
+    log.info("Starting Torta...")
     
     load_success := configuration.load()
     state.init()
@@ -45,18 +47,32 @@ run :: proc()
 
     target_fps := configuration.config.fps
 
+    draw_options := view.DrawOptions{}
+    time_waited := 0 * time.Second
+
     for !view.should_close() {
         update := false
         update ||= state.read_new_data()
         update ||= view.event_pending()
 
+        if time_waited >= 1 * time.Second {
+            if view.view_state_.in_settings {
+                draw_options += { .Force_Port_Update }
+            }
+            time_waited = 0
+        }
+
         // Update twice juuuust in case
         for i in 0 ..< 2 {
-            if update {
-                backend.draw(view.draw)
+            if  update ||
+                .Force_Port_Update in draw_options {
+                backend.draw(view.draw, draw_options)
             }
 
-            time.sleep(1000 / time.Duration(target_fps) * time.Millisecond)
+            draw_options -= { .Force_Port_Update }
+            sleep_duration := 1000 / time.Duration(target_fps) * time.Millisecond
+            time.sleep(sleep_duration)
+            time_waited += sleep_duration
         }
     }
 
@@ -65,10 +81,9 @@ run :: proc()
     configuration.cleanup()
 }
 
-create_log_file :: proc() -> (fd: os.Handle, err: os.Error)
+create_log_file :: proc() -> (fd: ^os.File, err: os.Error)
 {
-    dateBuf := make([]u8, 32)
-    defer delete(dateBuf)
+    dateBuf := make([]u8, 32, context.temp_allocator)
     now := time.now()
     date := time.to_string_yyyy_mm_dd(now, dateBuf)
     builder : strings.Builder
@@ -78,19 +93,11 @@ create_log_file :: proc() -> (fd: os.Handle, err: os.Error)
     strings.write_string(&builder, ".log")
 
     base_dir := storage.path({"logs"})
-    defer delete(base_dir)
 
     os.make_directory(base_dir)
 
     fp := storage.path({"logs", strings.to_string(builder)})
-    defer delete(fp)
 
-when ODIN_OS == .Linux {
-    accessFlags := os.S_IRUSR | os.S_IWUSR | os.S_IRGRP | os.S_IROTH
-}
-else when ODIN_OS == .Windows {
-    accessFlags := 0
-}
-    return os.open(fp, os.O_WRONLY | os.O_APPEND | os.O_CREATE, accessFlags)
+    return os.open(fp, os.O_WRONLY | os.O_APPEND | os.O_CREATE, os.Permissions_Read_Write_All)
 }
 

@@ -199,7 +199,7 @@ init :: proc (width: int, height: int)
     mu_ctx.text_height = get_text_height
 }
 
-draw :: proc (draw_screen: proc(ctx: ^mu.Context))
+draw :: proc (draw_screen: proc(ctx: ^mu.Context, options: $O), options: O)
 {
     e := sdl.Event{}
 
@@ -258,7 +258,7 @@ draw :: proc (draw_screen: proc(ctx: ^mu.Context))
     // Draw
     mu.begin(ctx)
     {
-        draw_screen(ctx)
+        draw_screen(ctx, options)
     }
     mu.end(ctx)
 

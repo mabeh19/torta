@@ -5,24 +5,9 @@ import "core:strings"
 import "core:os"
 import "core:log"
 
-when ODIN_OS == .Linux {
-foreign import sl "serial_linux_backend.a"
-}
-else when ODIN_OS == .Windows {
-
-foreign import sl "serial_windows_backend.lib"
-}
-
-
-foreign sl {
-    OpenPort :: proc(cstring, ^PortSettingsInternal, ^os.Handle, proc "c" (cstring)) -> bool ---
-    ClosePort :: proc(fd: c.int) ---
-    Poll :: proc(fd: os.Handle) -> c.int ---
-}
-
 
 Port :: struct {
-    file: Maybe(os.Handle)
+    file: Maybe(^os.File)
 }
 
 
@@ -56,17 +41,13 @@ open_port :: proc(settings: PortSettings) -> (port: Port, ok: bool)
         controlflow = false,
     }
 
-    cport := strings.clone_to_cstring(settings.port)
-    defer delete(cport)
-
-    fd : os.Handle
-    ok = OpenPort(cport, &settings_internal, &fd, proc "c" (msg: cstring) {
-        
-    })
-
-    if ok {
-        port.file = fd
+    fd, f_err := os.open(settings.port, { os.File_Flag.Write, os.File_Flag.Read, os.File_Flag.Sync, os.File_Flag.Non_Blocking })
+    if f_err != nil {
+        log.errorf("Unable to open port: %v", f_err)
     }
+
+    ok = fd != nil
+    port.file = fd
 
     return port, ok
 }
@@ -74,21 +55,28 @@ open_port :: proc(settings: PortSettings) -> (port: Port, ok: bool)
 close_port :: proc(port: ^Port) 
 {
     if fd, ok := port.file.?; ok {
-        ClosePort(c.int(fd))
-        port.file = nil
+        err := os.close(fd)
+        if err != nil {
+            log.errorf("Unable to close port: %v", err)
+        }
+        else {
+            port.file = nil
+        }
     }
 }
 
 is_open :: proc(port: Port) -> bool
 {
-    _, ok := port.file.?
-    return ok
+    return port.file != nil
 }
 
 send :: proc(port: Port, data: []u8) -> (ok: bool)
 {
     if fd, exists := port.file.?; exists {
         _, err := os.write(fd, data)
+        if err != nil {
+            log.errorf("Error writing to port: %v", err)
+        }
         ok = err == nil
     }
 
@@ -100,14 +88,8 @@ read :: proc(port: Port) -> (data: u8, ok: bool)
     b := [1]u8{}
 
     if fd, ok := port.file.?; ok {
-        res := Poll(fd)
-        if res == -1 {
-            // error while reading
-        }
-        else if res > 0 {
-            if n, err := os.read(fd, b[:]); err == nil && n > 0 {
-                return b[0], true
-            }
+        if n, err := os.read(fd, b[:]); err == nil && n > 0 {
+            return b[0], true
         }
     }
 

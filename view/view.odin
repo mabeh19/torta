@@ -40,6 +40,13 @@ DisplaySetting :: enum {
 
 DisplaySettings :: bit_set[DisplaySetting]
 
+
+DrawOption :: enum {
+    Force_Port_Update,
+}
+
+DrawOptions :: bit_set[DrawOption]
+
 ViewState :: struct {
     frame_memory: virtual.Arena,
     font: mu.Font,
@@ -100,7 +107,7 @@ event_pending :: proc() -> bool
 }
 
 @(export, link_prefix=EXPORT_NAMESPACE)
-draw :: proc (ctx: ^mu.Context)
+draw :: proc (ctx: ^mu.Context, options := DrawOptions{})
 {
     context.allocator = virtual.arena_allocator(&view_state_.frame_memory)
     // Drawing logic
@@ -126,10 +133,9 @@ draw :: proc (ctx: ^mu.Context)
             if .SUBMIT in mu.button(ctx, "OK") {
                 clear_error_message()
             }
-            
         }
         else if view_state_.in_settings {
-            draw_settings(ctx)
+            draw_settings(ctx, options)
         }
         else {
             mu.layout_row(ctx, {-100, -1}, -1)
@@ -274,12 +280,10 @@ draw_data_view :: proc(ctx: ^mu.Context)
             }
             mu.layout_row(ctx, {-1}, panel.body.h)
             mu.layout_begin_column(ctx)
-            for l in d {
-                if len(l.data) == 0 {
-                    continue
-                }
+
+            lines := slice.mapper(d, proc(l: s.Line) -> string {
                 buf: [time.MIN_HMS_LEN]u8 
-                
+
                 lstr := ""
                 if .Show_Times in view_state_.display_settings {
                     lstr = fmt.aprintf("%s %s", time.time_to_string_hms(l.timestamp, buf[:]), string(l.data[:]), allocator = context.temp_allocator)
@@ -287,10 +291,23 @@ draw_data_view :: proc(ctx: ^mu.Context)
                 else {
                     lstr = fmt.aprintf("%s", string(l.data[:]), allocator = context.temp_allocator)
                 }
-                content_width := backend.text_width(lstr) + ctx.style.padding * 2
-                mu.layout_row(ctx, {content_width}, line_height)
-                labelf(ctx, "%s", lstr)
-            }
+
+                return lstr
+            })
+            joined := strings.join(lines, "\n")
+
+            Data :: struct { width: i32, padding: i32 }
+            dat := slice.reduce(lines, Data{0, ctx.style.padding}, proc(out: Data, l: string) -> Data {
+                return {
+                    width = max(out.width, backend.text_width(l) + out.padding * 2),
+                    padding = out.padding
+                }
+            })
+
+            mu.layout_row(ctx, {dat.width}, -1)
+            mu.text(ctx, joined)
+
+
             mu.layout_end_column(ctx)
             mu.layout_row(ctx, {-1}, -1)
             mu.end_panel(ctx)
@@ -401,7 +418,7 @@ draw_port_info :: proc(ctx: ^mu.Context)
     }
 
     parity := unicode.to_upper(rune(state.portSettings.parity))
-    labelf(ctx, "%v - %v %v%v%v", state.portSettings.port, state.portSettings.baudrate, 8, parity, state.portSettings.stopBits)
+    labelf(ctx, "%v (%s) - %v %v%v%v", state.portSettings.port, state.selectedPort.info.product[:], state.portSettings.baudrate, 8, parity, state.portSettings.stopBits)
 }
     
 

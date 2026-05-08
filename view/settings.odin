@@ -52,13 +52,13 @@ init_settings :: proc()
     ev.signal(&ue.settingsChanged, config.defaultPortSettings)
 }
 
-draw_settings :: proc(ctx: ^mu.Context)
+draw_settings :: proc(ctx: ^mu.Context, options := DrawOptions{})
 {
     state := s.get_state()
 
     // Refresh
     mu.layout_row(ctx, {100}, 20)
-    if .SUBMIT in mu.button(ctx, "Refresh") {
+    if .SUBMIT in mu.button(ctx, "Refresh") || .Force_Port_Update in options {
         ev.signal(&ue.refreshPortsEvent)
     }
     if .ACTIVE in mu.header(ctx, "Ports") {

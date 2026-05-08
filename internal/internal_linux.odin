@@ -14,17 +14,15 @@ get_serial_ports_internal :: proc(ports: []SerialPort) -> int
     numPorts := 0
 
     dir, err := os.open("/dev/"); 
-    if dir < 0 {
+    if err != nil {
         return 0
     }
+    defer os.close(dir)
 
-    fi, rd_err := os.read_dir(dir, 1) 
-    if err != .NONE {
-        log.error("Error reading /dev/:", err)
-        return 0
-    }
+    it := os.read_directory_iterator_create(dir)
+    defer os.read_directory_iterator_destroy(&it)
 
-    for f in fi {
+    for f in os.read_directory_iterator(&it) {
         if !(strings.starts_with(f.name, "ttyUSB") ||
              strings.starts_with(f.name, "ttyACM")) {
             continue
@@ -50,7 +48,8 @@ get_device_info :: proc(port: string) -> (info: DeviceInfo)
     device_id_path := fmt.aprintf("/sys/class/tty/%v/dev", port)
     defer delete(device_id_path)
 
-    if device_id, ok := os.read_entire_file(device_id_path); ok {
+    if device_id, read_err := os.read_entire_file_from_path(device_id_path, context.temp_allocator); read_err == nil {
+        defer delete(device_id)
         trimmed_id := strings.trim(string(device_id), "\n")
         full_id : strings.Builder
         strings.builder_init(&full_id)
