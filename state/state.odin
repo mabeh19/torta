@@ -1,6 +1,5 @@
 package state
 
-
 import ev "../event"
 import ue "../user_events"
 import pe "../process_events"
@@ -9,6 +8,7 @@ import "../serial"
 import "../internal"
 import "../configuration"
 import "../errors"
+import ansi_parser "../ansi-parser"
 
 import "core:log"
 import "core:thread"
@@ -38,6 +38,9 @@ State :: struct {
     },
     bytes_read: int,
     dataAllocator: mem.Arena, // dedicated arena for serial data
+
+    // Ansi parser
+    ansiParser: ansi_parser.Parser,
 
     // Options
     echo: bool,
@@ -94,6 +97,7 @@ read_new_data :: proc() -> (new_data: bool) {
     return
 }
 
+
 init :: proc()
 {
     _ = mem.arena_init_growing(&state.arena)
@@ -115,47 +119,7 @@ init :: proc()
         mem.arena_free_all(&state.dataAllocator)
     })
 
-    ev.listen(&pe.dataReceivedEvent, proc(data: []u8) {
-        context.allocator = mem.arena_allocator(&state.dataAllocator)
-        state.bytes_read += len(data)
-
-        switch &d in state.data {
-        case Lines:
-            lines, err := strings.split(string(data), "\n")
-            defer delete(lines)
-            if err != nil {
-                break
-            }
-
-            // append first line to the end of the last line
-            if len(d) == 0 {
-                line := Line {
-                    data = make([dynamic]u8),
-                    timestamp = time.now()
-                }
-                append(&line.data, lines[0])
-                append(&d, line)
-            }
-            else {
-                append(&d[len(d)-1].data, lines[0])
-            }
-
-            if len(lines) == 1 {
-                break
-            }
-
-            for l in lines[1:] {
-                line := Line {
-                    data = make([dynamic]u8),
-                    timestamp = time.now()
-                }
-                append(&line.data, l)
-                append(&d, line)
-            }
-        case RawData:
-            append(&d, ..data)
-        }
-    })
+    ev.listen(&pe.dataReceivedEvent, on_data_received)
 
     ev.listen(&ue.settingsChanged, proc(settings: serial.PortSettings) {
         log.debugf("New settings: %v", settings)
@@ -308,3 +272,85 @@ try_autoconnect :: proc()
         }
     }
 }
+
+@private
+on_data_received :: proc(data: []u8) 
+{
+	context.allocator = mem.arena_allocator(&state.dataAllocator)
+	state.bytes_read += len(data)
+
+	for b in data {
+		events := ansi_parser.parse(&state.ansiParser, rune(b))
+		for event in events {
+			#partial switch event {
+			case .ClearScreen:
+				ev.signal(&ue.clearEvent)
+			}
+		}
+
+		if .IgnoreByte in events {
+			continue
+		}
+
+		switch &d in state.data {
+		case Lines:
+			if len(d) == 0 {
+				append(&d, Line {
+					data = make([dynamic]u8),
+					timestamp = time.now()
+				})
+			}
+
+			if b == '\n' {
+				// new line
+				line := Line {
+					data = make([dynamic]u8),
+					timestamp = time.now()
+				}
+				append(&d, line)
+			}
+			else {
+				append(&slice.last_ptr(d[:]).data, b)
+			}
+		case RawData:
+			append(&d, b)
+		}
+	}
+}
+
+//        switch &d in state.data {
+//        case Lines:
+//            lines, err := strings.split(string(data), "\n")
+//            defer delete(lines)
+//            if err != nil {
+//                break
+//            }
+//
+//            // append first line to the end of the last line
+//            if len(d) == 0 {
+//                line := Line {
+//                    data = make([dynamic]u8),
+//                    timestamp = time.now()
+//                }
+//                append(&line.data, lines[0])
+//                append(&d, line)
+//            }
+//            else {
+//                append(&d[len(d)-1].data, lines[0])
+//            }
+//
+//            if len(lines) == 1 {
+//                break
+//            }
+//
+//            for l in lines[1:] {
+//                line := Line {
+//                    data = make([dynamic]u8),
+//                    timestamp = time.now()
+//                }
+//                append(&line.data, l)
+//                append(&d, line)
+//            }
+//        case RawData:
+//            append(&d, ..data)
+//        }
