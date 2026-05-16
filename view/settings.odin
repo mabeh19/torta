@@ -12,6 +12,7 @@ import "core:mem"
 import "core:strconv"
 import "core:log"
 import "core:math"
+import "core:strings"
 
 import mu "vendor:microui"
 
@@ -76,7 +77,7 @@ draw_settings :: proc(ctx: ^mu.Context, options := DrawOptions{})
             fmt.bprintf(friendly_name[:], "%s (%s)", port.port_name, port.info.product[:])
             if .ACTIVE in mu.treenode(ctx, string(friendly_name[:])) {
                 if .SUBMIT in mu.button(ctx, "Select") {
-                    tmp_settings_.selectedPort = string(port.port_name[:])
+                    tmp_settings_.selectedPort = strings.string_from_null_terminated_ptr(raw_data(port.port_name[:]), len(port.port_name))
                 }
                 infos := [?]struct {title: string, value: string}{
                     {"Manufacturer: ", cast(string)port.info.manufacturer[:]},
