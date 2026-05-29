@@ -18,8 +18,6 @@ when ODIN_OS == .Linux {
 else when ODIN_OS == .Windows {
     homedrive := os.get_env("HOMEDRIVE", context.temp_allocator)
     homepath := os.get_env("HOMEPATH", context.temp_allocator)
-    defer delete(homedrive)
-    defer delete(homepath)
     ROOT_DIR = fmt.aprintf("{}{}\\AppData\\Local\\", homedrive, homepath)
 }
     app_directory, alloc_err := filepath.join({ROOT_DIR, DATA_DIR}, context.temp_allocator)

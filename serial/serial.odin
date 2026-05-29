@@ -4,10 +4,10 @@ import "core:c"
 import "core:strings"
 import "core:os"
 import "core:log"
-
+import "core:nbio"
 
 Port :: struct {
-    file: Maybe(^os.File)
+    file: Maybe(nbio.Handle)
 }
 
 
@@ -41,12 +41,15 @@ open_port :: proc(settings: PortSettings) -> (port: Port, ok: bool)
         controlflow = false,
     }
 
-    fd, f_err := os.open(settings.port, { os.File_Flag.Write, os.File_Flag.Read, os.File_Flag.Sync, os.File_Flag.Non_Blocking })
+    nbio.acquire_thread_event_loop()
+    defer nbio.release_thread_event_loop()
+
+    fd, f_err := nbio.open_sync(settings.port, mode = { .Write, .Read, .Sync })
     if f_err != nil {
         log.errorf("Unable to open port: %v", f_err)
     }
 
-    ok = fd != nil
+    ok = f_err == nil
     port.file = fd
 
     return port, ok
@@ -55,9 +58,12 @@ open_port :: proc(settings: PortSettings) -> (port: Port, ok: bool)
 close_port :: proc(port: ^Port) 
 {
     if fd, ok := port.file.?; ok {
-        err := os.close(fd)
-        if err != nil {
-            log.errorf("Unable to close port: %v", err)
+        nbio.acquire_thread_event_loop()
+        defer nbio.release_thread_event_loop()
+        cop := nbio.close(fd)
+        nbio.run()
+        if cop.close.err != nil {
+            log.errorf("Unable to close port: %v", cop.close.err)
         }
         else {
             port.file = nil
@@ -73,11 +79,15 @@ is_open :: proc(port: Port) -> bool
 send :: proc(port: Port, data: []u8) -> (ok: bool)
 {
     if fd, exists := port.file.?; exists {
-        _, err := os.write(fd, data)
-        if err != nil {
-            log.errorf("Error writing to port: %v", err)
+        nbio.acquire_thread_event_loop()
+        defer nbio.release_thread_event_loop()
+
+        wop := nbio.write(fd, 0, data, ignore_cb, timeout = 0)
+        nbio.tick(0)
+        if wop.write.err != nil {
+            log.errorf("Error writing to port: %v", wop.write.err)
         }
-        ok = err == nil
+        ok = wop.write.err == nil
     }
 
     return
@@ -88,10 +98,25 @@ read :: proc(port: Port) -> (data: u8, ok: bool)
     b := [1]u8{}
 
     if fd, ok := port.file.?; ok {
-        if n, err := os.read(fd, b[:]); err == nil && n > 0 {
-            return b[0], true
+        nbio.acquire_thread_event_loop()
+        defer nbio.release_thread_event_loop()
+
+        rop := nbio.read(fd, 0, b[:], ignore_cb, timeout = 0)
+        nbio.tick(0)
+        if rop.read.err == nil {
+            data = b[0]
+            ok = true
+        }
+        else if rop.read.err != .Timeout {
+            log.errorf("Error reading from port: %v", rop.read.err)
         }
     }
 
     return {}, {}
+}
+
+@private
+ignore_cb :: proc(op: ^nbio.Operation)
+{
+    // No-op callback 
 }

@@ -22,10 +22,7 @@ get_serial_ports_internal :: proc(ports: []SerialPort) -> int
 
     for i in 0..<portsFound {
         fmt.bprintf(ports[i].port_name[:], "COM%v", portNums[i])
-        log.debugf("Adding port:", string(ports[i].port_name))
-        ports[i] = SerialPort {
-            info = get_device_info(string(ports[i].port_name[:])),
-        }
+        ports[i].info = get_device_info(string(ports[i].port_name[:]))
     }
 
     return int(portsFound)
